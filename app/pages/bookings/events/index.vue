@@ -1,4 +1,8 @@
 <script setup lang="ts">
+definePageMeta({
+  layout: 'bookings',
+})
+
 useSeoMeta({
   title: '공연 리스트 - Subculture Ground',
   description: '다양한 공연을 검색하고 예매하세요.',
@@ -162,20 +166,6 @@ const getStatusClass = (status: Event['status']) => {
 
 <template>
   <div class="events-page">
-    <header class="header">
-      <NuxtLink to="/" class="brand" aria-label="Subculture Ground 홈">
-        <span class="brand__dot" aria-hidden="true" />
-        <span class="brand__text">Subculture Ground</span>
-      </NuxtLink>
-
-      <nav class="nav" aria-label="주요 메뉴">
-        <NuxtLink class="nav__link" to="/">홈</NuxtLink>
-        <NuxtLink class="nav__link" to="/booking">예매</NuxtLink>
-        <NuxtLink class="nav__link nav__link--active" to="/events">공연</NuxtLink>
-        <NuxtLink class="nav__link" to="/about">소개</NuxtLink>
-      </nav>
-    </header>
-
     <main class="main">
       <div class="events-header">
         <h1 class="events-title">공연 리스트</h1>
@@ -328,7 +318,7 @@ const getStatusClass = (status: Event['status']) => {
 
           <div class="event-card__footer">
             <NuxtLink
-              :to="`/events/${event.id}`"
+              :to="`/bookings/events/${event.id}`"
               class="btn btn--primary"
             >
               상세보기
@@ -337,292 +327,10 @@ const getStatusClass = (status: Event['status']) => {
         </article>
       </div>
     </main>
-
-    <footer class="footer">
-      <p class="footer__text">
-        © {{ new Date().getFullYear() }} Subculture Ground. All rights reserved.
-      </p>
-    </footer>
   </div>
 </template>
 
 <style scoped>
 @import '~/assets/css/index.css';
-
-.events-page {
-  min-height: 100vh;
-  background: var(--bg);
-  color: var(--text);
-}
-
-.events-header {
-  text-align: center;
-  padding: 60px 20px 40px;
-  max-width: 1100px;
-  margin: 0 auto;
-}
-
-.events-title {
-  margin: 0 0 12px;
-  font-size: 48px;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 1), rgba(34, 197, 94, 1));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.events-subtitle {
-  margin: 0;
-  font-size: 18px;
-  color: var(--muted);
-}
-
-.search-section {
-  max-width: 1100px;
-  margin: 0 auto 40px;
-  padding: 0 20px;
-}
-
-.search-box {
-  position: relative;
-  margin-bottom: 24px;
-}
-
-.search-input {
-  width: 100%;
-  height: 56px;
-  padding: 0 56px 0 20px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text);
-  font-size: 16px;
-  transition: border-color 200ms ease, background-color 200ms ease;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: rgba(124, 58, 237, 0.5);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.search-input::placeholder {
-  color: var(--muted-2);
-}
-
-.search-icon {
-  position: absolute;
-  right: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--muted);
-  pointer-events: none;
-}
-
-.filters {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.filter-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.category-filters,
-.status-filters {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.category-btn,
-.status-btn {
-  padding: 10px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 200ms ease;
-}
-
-.category-btn:hover,
-.status-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text);
-  transform: translateY(-1px);
-}
-
-.category-btn--active,
-.status-btn--active {
-  border-color: rgba(124, 58, 237, 0.5);
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(34, 197, 94, 0.15));
-  color: var(--text);
-}
-
-.empty-state {
-  text-align: center;
-  padding: 80px 20px;
-  max-width: 1100px;
-  margin: 0 auto;
-}
-
-.empty-text {
-  margin: 0 0 8px;
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.empty-hint {
-  margin: 0;
-  font-size: 14px;
-  color: var(--muted);
-}
-
-.events-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 24px;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0 20px 60px;
-}
-
-.event-card {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
-  padding: 20px;
-  transition: transform 200ms ease, box-shadow 200ms ease;
-}
-
-.event-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(124, 58, 237, 0.15);
-}
-
-.event-card__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.status-badge {
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.status-badge.status--open {
-  background: rgba(34, 197, 94, 0.2);
-  color: #22c55e;
-  border: 1px solid rgba(34, 197, 94, 0.3);
-}
-
-.status-badge.status--closed {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--muted);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.status-badge.status--live {
-  background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-.status-badge.status--ended {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--muted-2);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.category-badge {
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  background: rgba(124, 58, 237, 0.15);
-  color: rgba(124, 58, 237, 0.9);
-  border: 1px solid rgba(124, 58, 237, 0.25);
-}
-
-.event-card__body {
-  margin-bottom: 20px;
-}
-
-.event-card__title {
-  margin: 0 0 8px;
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.3;
-}
-
-.event-card__artist {
-  margin: 0 0 16px;
-  font-size: 16px;
-  color: var(--muted);
-  font-weight: 600;
-}
-
-.event-card__info {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.info-icon {
-  flex-shrink: 0;
-  color: var(--muted-2);
-}
-
-.event-card__footer {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.nav__link--active {
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-@media (max-width: 720px) {
-  .events-title {
-    font-size: 36px;
-  }
-
-  .events-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .search-input {
-    height: 48px;
-    font-size: 14px;
-  }
-}
 </style>
+

@@ -71,7 +71,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
 
       <nav class="nav" aria-label="주요 메뉴">
         <NuxtLink class="nav__link" to="/">홈</NuxtLink>
-        <NuxtLink class="nav__link" to="/events">공연</NuxtLink>
+        <NuxtLink class="nav__link" to="/bookings/events">공연</NuxtLink>
         <NuxtLink class="nav__link" to="/about">소개</NuxtLink>
       </nav>
     </header>
