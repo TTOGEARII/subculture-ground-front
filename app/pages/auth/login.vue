@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// Nuxt composable 명시적 import (Docker 환경에서 안정적)
+import { useAuth } from '../../../composables/useAuth'
+
 definePageMeta({
   layout: false,
 })
@@ -9,6 +12,8 @@ useSeoMeta({
   ogTitle: '로그인 - Subculture Ground',
   ogDescription: 'Subculture Ground에 로그인하세요.',
 })
+
+const auth = useAuth()
 
 const email = ref('')
 const password = ref('')
@@ -38,17 +43,19 @@ const handleSubmit = async () => {
   isLoading.value = true
 
   try {
-    // TODO: 실제 로그인 API 호출
-    await new Promise((resolve) => setTimeout(resolve, 1000)) // 시뮬레이션
-
-    // 로그인 성공 시 처리
-    // 예: navigateTo('/') 또는 useAuth().login() 등
-    console.log('로그인 성공:', { email: email.value, rememberMe: rememberMe.value })
-    
-    // 임시로 홈으로 리다이렉트
+    await auth.login({
+      email: email.value,
+      password: password.value,
+    })
+    // 로그인 성공 시 홈으로 이동
     await navigateTo('/')
-  } catch (error) {
-    errorMessage.value = '이메일 또는 비밀번호가 올바르지 않습니다.'
+  } catch (error: any) {
+    const message =
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      error?.message ||
+      '이메일 또는 비밀번호가 올바르지 않습니다.'
+    errorMessage.value = Array.isArray(message) ? message[0] : message
   } finally {
     isLoading.value = false
   }
@@ -216,7 +223,6 @@ const handleKeyPress = (e: KeyboardEvent) => {
 </template>
 
 <style scoped>
-@import '~/assets/css/index.css';
 
 .login-page {
   min-height: 100vh;

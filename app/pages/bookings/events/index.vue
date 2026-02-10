@@ -331,6 +331,5 @@ const getStatusClass = (status: Event['status']) => {
 </template>
 
 <style scoped>
-@import '~/assets/css/index.css';
 </style>
 

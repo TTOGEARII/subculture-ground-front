@@ -40,5 +40,4 @@ useSeoMeta({
 </template>
 
 <style scoped>
-@import '~/assets/css/index.css';
 </style>

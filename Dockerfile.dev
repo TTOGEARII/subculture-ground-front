@@ -1,0 +1,11 @@
+# Nuxt.js 프론트엔드 개발용 Dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+
+# 의존성 설치
+COPY package*.json ./
+RUN npm install --no-audit --no-fund
+
+# 개발 서버 실행 (볼륨 마운트로 코드 변경사항 반영)
+CMD ["npm", "run", "dev"]
