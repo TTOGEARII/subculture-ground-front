@@ -28,10 +28,6 @@ useSeoMeta({
             밴드와 관객 모두를 위한<br />
             공연 예매 토이 프로젝트
           </p>
-          <p class="hero__subtitle">
-            두둥(`dudoong.com`)을 참고해 만든 공연 예매 실험용 UI입니다.<br />
-            리스트 · 상세 · 예매 카드 컴포넌트들을 자유롭게 개선해 보세요.
-          </p>
 
           <ul class="hero__actions">
             <li>
@@ -71,15 +67,14 @@ useSeoMeta({
         </div>
       </section>
 
-      <!-- FEATURES (두둥 스타일 섹션) -->
       <section
         id="features"
         class="section section--features"
       >
         <div class="section__head">
-          <h2 class="section__title">두둥 스타일 예매 기능</h2>
+          <h2 class="section__title">예매 기능</h2>
           <p class="section__desc">
-            실제 서비스가 아닌 토이 프로젝트이지만, 두둥의 흐름을 느낄 수 있도록 구성했습니다.
+            실제 서비스가 아닌 토이 프로젝트이지만, 공연 예매의 흐름을 느낄 수 있도록 구성했습니다.
           </p>
         </div>
 
