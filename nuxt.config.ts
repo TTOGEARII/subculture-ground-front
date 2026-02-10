@@ -29,6 +29,10 @@ export default defineNuxtConfig({
       // 프론트엔드에서 사용할 백엔드 API 기본 URL
       apiBase:
         process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:3001',
+      // 암호화 키 (환경 변수로 설정 가능)
+      encryptionKey:
+        process.env.NUXT_PUBLIC_ENCRYPTION_KEY ||
+        'subculture-ground-encryption-key-2024',
     },
   },
 })

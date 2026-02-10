@@ -1,6 +1,7 @@
 // @ts-nocheck
 import axios, { AxiosError } from 'axios'
 import { computed } from 'vue'
+import { encryptObject, decryptObject } from '../utils/crypto'
 
 interface AuthUser {
   idx: number
@@ -123,22 +124,49 @@ export const useAuth = () => {
     user.value = null
   }
 
+  // 암호화 키 가져오기 (런타임 설정에서)
+  const encryptionKey = computed(() => {
+    return (config.public.encryptionKey as string) || 'subculture-ground-encryption-key-2024'
+  })
+
   const login = async (payload: LoginPayload) => {
-    const response = await apiClient.post<AuthResponse>('/auth/login', payload)
-    setAuthState(response.data)
+    // 요청 데이터 암호화
+    const encryptedPayload = encryptObject(payload, encryptionKey.value)
+    
+    // 암호화된 데이터를 전송
+    const response = await apiClient.post<{ encrypted: string }>('/auth/login', {
+      encrypted: encryptedPayload,
+    })
+    
+    // 응답 데이터 복호화
+    const decryptedData = decryptObject<AuthResponse>(response.data.encrypted, encryptionKey.value)
+    setAuthState(decryptedData)
   }
 
   const register = async (payload: RegisterPayload) => {
-    const response = await apiClient.post<AuthResponse>('/auth/register', payload)
-    setAuthState(response.data)
+    // 요청 데이터 암호화
+    const encryptedPayload = encryptObject(payload, encryptionKey.value)
+    
+    // 암호화된 데이터를 전송
+    const response = await apiClient.post<{ encrypted: string }>('/auth/register', {
+      encrypted: encryptedPayload,
+    })
+    
+    // 응답 데이터 복호화
+    const decryptedData = decryptObject<AuthResponse>(response.data.encrypted, encryptionKey.value)
+    setAuthState(decryptedData)
   }
 
   const fetchProfile = async () => {
     if (!token.value) return null
 
-    const response = await apiClient.get<AuthUser>('/auth/profile')
-    user.value = response.data
-    return response.data
+    const response = await apiClient.get<{ encrypted: string }>('/auth/profile')
+    
+    // 응답 데이터 복호화
+    const decryptedData = decryptObject<AuthUser>(response.data.encrypted, encryptionKey.value)
+    
+    user.value = decryptedData
+    return decryptedData
   }
 
   const logout = async () => {
