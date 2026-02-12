@@ -31,18 +31,45 @@ const filteredPerformances = computed(() => {
   // 검색어 필터링
   if (searchQuery.value.trim()) {
     const query = searchQuery.value.toLowerCase()
-    result = result.filter(
-      (performance) =>
+    result = result.filter((performance) => {
+      const categoryArray = Array.isArray(performance.category)
+        ? performance.category
+        : typeof performance.category === 'string'
+          ? (() => {
+              try {
+                const parsed = JSON.parse(performance.category)
+                return Array.isArray(parsed) ? parsed : []
+              } catch {
+                return []
+              }
+            })()
+          : []
+      return (
         performance.name.toLowerCase().includes(query) ||
         performance.artist.toLowerCase().includes(query) ||
         performance.venue.toLowerCase().includes(query) ||
-        performance.category.toLowerCase().includes(query),
-    )
+        categoryArray.some((cat) => String(cat).toLowerCase().includes(query))
+      )
+    })
   }
 
-  // 카테고리 필터링
+  // 카테고리 필터링 (여러 카테고리 중 하나라도 일치하면 표시)
   if (selectedCategory.value !== '전체') {
-    result = result.filter((performance) => performance.category === selectedCategory.value)
+    result = result.filter((performance) => {
+      const categoryArray = Array.isArray(performance.category)
+        ? performance.category
+        : typeof performance.category === 'string'
+          ? (() => {
+              try {
+                const parsed = JSON.parse(performance.category)
+                return Array.isArray(parsed) ? parsed : []
+              } catch {
+                return []
+              }
+            })()
+          : []
+      return categoryArray.includes(selectedCategory.value)
+    })
   }
 
   // 상태 필터링
@@ -165,7 +192,15 @@ const getStatusClass = (status: Performance['status']) => {
             <span :class="['status-badge', getStatusClass(performance.status)]">
               {{ getStatusText(performance.status) }}
             </span>
-            <span class="category-badge">{{ performance.category }}</span>
+            <div class="category-badges">
+              <span
+                v-for="cat in (Array.isArray(performance.category) ? performance.category : [])"
+                :key="cat"
+                class="category-badge"
+              >
+                {{ cat }}
+              </span>
+            </div>
           </div>
 
           <div class="event-card__body">
@@ -251,5 +286,23 @@ const getStatusClass = (status: Performance['status']) => {
 </template>
 
 <style scoped>
+.event-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.category-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.category-badge {
+  display: inline-block;
+}
 </style>
 

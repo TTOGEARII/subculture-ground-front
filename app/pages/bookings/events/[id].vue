@@ -15,7 +15,7 @@ interface Performance {
   venue: string
   date: string
   time: string
-  category: string
+  category: string[] // JSON 배열 형태 (예: ["록","jpop"])
   status: 0 | 1 // 0: 예매마감, 1: 예매중
   price: number
   image?: string
@@ -34,7 +34,7 @@ const performances: Performance[] = [
     venue: '올림픽공원 올림픽홀',
     date: '2026-02-15',
     time: '19:00',
-    category: '페스티벌',
+    category: ['페스티벌'],
     status: 1, // 예매중
     price: 80000,
     description: '서브컬처 음악의 모든 것을 만날 수 있는 대규모 페스티벌입니다.',
@@ -57,7 +57,7 @@ const performances: Performance[] = [
     venue: '홍대 클럽',
     date: '2026-02-20',
     time: '20:00',
-    category: '록',
+    category: ['록'],
     status: 1, // 예매중
     price: 50000,
     description: '한국 인디 록의 대표 밴드들의 무대입니다.',
@@ -79,7 +79,7 @@ const performances: Performance[] = [
     venue: '강남 클럽',
     date: '2026-02-18',
     time: '22:00',
-    category: '일렉트로닉',
+    category: ['일렉트로닉'],
     status: 1, // 예매중 (더미 데이터이므로 예매중으로 변경)
     price: 60000,
     description: '최신 일렉트로닉 음악을 즐길 수 있는 나이트입니다.',
@@ -101,7 +101,7 @@ const performances: Performance[] = [
     venue: '이태원 라이브홀',
     date: '2026-02-25',
     time: '19:30',
-    category: '힙합',
+    category: ['힙합'],
     status: 1, // 예매중
     price: 45000,
     description: '신인 힙합 아티스트들의 무대입니다.',
@@ -123,7 +123,7 @@ const performances: Performance[] = [
     venue: '세종문화회관',
     date: '2026-02-22',
     time: '18:00',
-    category: '포크',
+    category: ['포크'],
     status: 0, // 예매마감
     price: 70000,
     description: '아늑한 분위기의 포크 음악 공연입니다.',
@@ -145,7 +145,7 @@ const performances: Performance[] = [
     venue: '블루노트 서울',
     date: '2026-02-19',
     time: '21:00',
-    category: '재즈',
+    category: ['재즈'],
     status: 1, // 예매중
     price: 90000,
     description: '프리미엄 재즈 라이브 공연입니다.',
@@ -227,7 +227,13 @@ const getStatusClass = (status: Performance['status']) => {
             <span :class="['status-badge', getStatusClass(performance.status)]">
               {{ getStatusText(performance.status) }}
             </span>
-            <span class="category-badge">{{ performance.category }}</span>
+            <span
+              v-for="cat in performance.category"
+              :key="cat"
+              class="category-badge"
+            >
+              {{ cat }}
+            </span>
           </div>
 
           <h1 class="event-title">{{ performance.name }}</h1>

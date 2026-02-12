@@ -7,7 +7,7 @@ export interface Performance {
   venue: string
   date: string
   time: string
-  category: string
+  category: string[] // JSON 배열 형태 (예: ["록","jpop"])
   status: 0 | 1 // 0: 예매마감, 1: 예매중
   price: number
   image?: string
@@ -25,7 +25,7 @@ interface ApiPerformanceRow {
   performanceVenue: string
   performanceDate: string | Date
   performanceTime: string
-  performanceCategory: string
+  performanceCategory: string[] // 백엔드에서 배열로 변환되어 반환됨
   performanceStatus: 0 | 1 // 0: 예매마감, 1: 예매중
   performancePrice: number
   performanceImage?: string | null
@@ -39,6 +39,36 @@ interface ApiPerformanceRow {
  */
 export function getStatusText(status: 0 | 1): '예매마감' | '예매중' {
   return status === 0 ? '예매마감' : '예매중'
+}
+
+/**
+ * 카테고리 데이터를 배열로 변환
+ * 백엔드에서 이미 배열로 변환되어 오지만, 안전성을 위해 확인
+ * @param category 카테고리 데이터 (배열 또는 문자열)
+ * @returns 카테고리 문자열 배열
+ */
+function parseCategory(category: string[] | string | undefined | null): string[] {
+  if (!category) return []
+  
+  // 이미 배열인 경우
+  if (Array.isArray(category)) {
+    return category.filter((cat) => typeof cat === 'string' && cat.trim() !== '')
+  }
+  
+  // 문자열인 경우 JSON 파싱 시도
+  if (typeof category === 'string') {
+    try {
+      const parsed = JSON.parse(category)
+      if (Array.isArray(parsed)) {
+        return parsed.filter((cat) => typeof cat === 'string' && cat.trim() !== '')
+      }
+    } catch (error) {
+      // JSON 파싱 실패 시 빈 배열 반환
+      console.warn('카테고리 JSON 파싱 실패:', category, error)
+    }
+  }
+
+  return []
 }
 
 /**
@@ -60,7 +90,7 @@ function mapApiPerformanceToPerformance(row: ApiPerformanceRow): Performance {
     venue: row.performanceVenue,
     date: dateStr,
     time: row.performanceTime,
-    category: row.performanceCategory,
+    category: parseCategory(row.performanceCategory), // 백엔드에서 배열로 변환되어 오지만 안전성을 위해 파싱
     status: row.performanceStatus,
     price: row.performancePrice,
     image: row.performanceImage ?? undefined,
