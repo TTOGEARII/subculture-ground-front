@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { usePerformances, type Performance, getStatusText } from '../../../../composables/usePerformances'
+
 definePageMeta({
   layout: 'bookings',
 })
@@ -10,126 +12,43 @@ useSeoMeta({
   ogDescription: '다양한 공연을 검색하고 예매하세요.',
 })
 
-interface Event {
-  id: number
-  name: string
-  artist: string
-  venue: string
-  date: string
-  time: string
-  category: string
-  status: '예매중' | '예매마감' | '공연중' | '공연종료'
-  price: number
-  image?: string
-  description: string
-}
+const { performances, loading, fetchError, refreshPerformances, loadPerformances } = usePerformances()
 
-// 샘플 공연 데이터
-const events: Event[] = [
-  {
-    id: 1,
-    name: '서브컬처 페스티벌 2026',
-    artist: '다양한 아티스트',
-    venue: '올림픽공원 올림픽홀',
-    date: '2026-02-15',
-    time: '19:00',
-    category: '페스티벌',
-    status: '예매중',
-    price: 80000,
-    description: '서브컬처 음악의 모든 것을 만날 수 있는 대규모 페스티벌입니다.',
-  },
-  {
-    id: 2,
-    name: '인디 록 콘서트',
-    artist: 'The Indie Band',
-    venue: '홍대 클럽',
-    date: '2026-02-20',
-    time: '20:00',
-    category: '록',
-    status: '예매중',
-    price: 50000,
-    description: '한국 인디 록의 대표 밴드들의 무대입니다.',
-  },
-  {
-    id: 3,
-    name: '일렉트로닉 뮤직 나이트',
-    artist: 'DJ Electron',
-    venue: '강남 클럽',
-    date: '2026-02-18',
-    time: '22:00',
-    category: '일렉트로닉',
-    status: '공연중',
-    price: 60000,
-    description: '최신 일렉트로닉 음악을 즐길 수 있는 나이트입니다.',
-  },
-  {
-    id: 4,
-    name: '힙합 쇼케이스',
-    artist: 'Hip Hop Crew',
-    venue: '이태원 라이브홀',
-    date: '2026-02-25',
-    time: '19:30',
-    category: '힙합',
-    status: '예매중',
-    price: 45000,
-    description: '신인 힙합 아티스트들의 무대입니다.',
-  },
-  {
-    id: 5,
-    name: '포크 음악회',
-    artist: 'Folk Singers',
-    venue: '세종문화회관',
-    date: '2026-02-22',
-    time: '18:00',
-    category: '포크',
-    status: '예매마감',
-    price: 70000,
-    description: '아늑한 분위기의 포크 음악 공연입니다.',
-  },
-  {
-    id: 6,
-    name: '재즈 라이브',
-    artist: 'Jazz Quartet',
-    venue: '블루노트 서울',
-    date: '2026-02-19',
-    time: '21:00',
-    category: '재즈',
-    status: '예매중',
-    price: 90000,
-    description: '프리미엄 재즈 라이브 공연입니다.',
-  },
-]
+onMounted(() => {
+  loadPerformances()
+})
 
 const searchQuery = ref('')
 const selectedCategory = ref<string>('전체')
 const selectedStatus = ref<string>('전체')
 
 const categories = ['전체', '페스티벌', '록', '일렉트로닉', '힙합', '포크', '재즈']
-const statuses = ['전체', '예매중', '예매마감', '공연중', '공연종료']
+const statuses = ['전체', '예매중', '예매마감']
 
-const filteredEvents = computed(() => {
-  let result = events
+const filteredPerformances = computed(() => {
+  let result = performances.value
 
   // 검색어 필터링
   if (searchQuery.value.trim()) {
     const query = searchQuery.value.toLowerCase()
     result = result.filter(
-      (event) =>
-        event.name.toLowerCase().includes(query) ||
-        event.artist.toLowerCase().includes(query) ||
-        event.venue.toLowerCase().includes(query) ||
-        event.category.toLowerCase().includes(query),
+      (performance) =>
+        performance.name.toLowerCase().includes(query) ||
+        performance.artist.toLowerCase().includes(query) ||
+        performance.venue.toLowerCase().includes(query) ||
+        performance.category.toLowerCase().includes(query),
     )
   }
 
   // 카테고리 필터링
   if (selectedCategory.value !== '전체') {
-    result = result.filter((event) => event.category === selectedCategory.value)
+    result = result.filter((performance) => performance.category === selectedCategory.value)
   }
 
   // 상태 필터링
   if (selectedStatus.value !== '전체') {
-    result = result.filter((event) => event.status === selectedStatus.value)
+    const statusValue = selectedStatus.value === '예매중' ? 1 : 0
+    result = result.filter((performance) => performance.status === statusValue)
   }
 
   return result
@@ -148,19 +67,8 @@ const formatPrice = (price: number) => {
   return new Intl.NumberFormat('ko-KR').format(price)
 }
 
-const getStatusClass = (status: Event['status']) => {
-  switch (status) {
-    case '예매중':
-      return 'status--open'
-    case '예매마감':
-      return 'status--closed'
-    case '공연중':
-      return 'status--live'
-    case '공연종료':
-      return 'status--ended'
-    default:
-      return ''
-  }
+const getStatusClass = (status: Performance['status']) => {
+  return status === 1 ? 'status--open' : 'status--closed'
 }
 </script>
 
@@ -230,27 +138,39 @@ const getStatusClass = (status: Event['status']) => {
         </div>
       </div>
 
-      <div v-if="filteredEvents.length === 0" class="empty-state">
+      <div v-if="loading" class="empty-state">
+        <p class="empty-text">공연 목록을 불러오는 중입니다.</p>
+      </div>
+
+      <div v-else-if="fetchError" class="empty-state">
+        <p class="empty-text">공연 목록을 불러오지 못했습니다.</p>
+        <p class="empty-hint">{{ fetchError?.message ?? '잠시 후 다시 시도해주세요.' }}</p>
+        <button type="button" class="btn btn--primary" @click="() => refreshPerformances()">
+          다시 불러오기
+        </button>
+      </div>
+
+      <div v-else-if="filteredPerformances.length === 0" class="empty-state">
         <p class="empty-text">검색 결과가 없습니다.</p>
         <p class="empty-hint">다른 검색어나 필터를 시도해보세요.</p>
       </div>
 
       <div v-else class="events-grid">
         <article
-          v-for="event in filteredEvents"
-          :key="event.id"
+          v-for="performance in filteredPerformances"
+          :key="performance.id"
           class="event-card"
         >
           <div class="event-card__header">
-            <span :class="['status-badge', getStatusClass(event.status)]">
-              {{ event.status }}
+            <span :class="['status-badge', getStatusClass(performance.status)]">
+              {{ getStatusText(performance.status) }}
             </span>
-            <span class="category-badge">{{ event.category }}</span>
+            <span class="category-badge">{{ performance.category }}</span>
           </div>
 
           <div class="event-card__body">
-            <h3 class="event-card__title">{{ event.name }}</h3>
-            <p class="event-card__artist">{{ event.artist }}</p>
+            <h3 class="event-card__title">{{ performance.name }}</h3>
+            <p class="event-card__artist">{{ performance.artist }}</p>
             <div class="event-card__info">
               <div class="info-item">
                 <svg
@@ -269,7 +189,7 @@ const getStatusClass = (status: Event['status']) => {
                     stroke-linejoin="round"
                   />
                 </svg>
-                <span>{{ formatDate(event.date) }} {{ event.time }}</span>
+                <span>{{ formatDate(performance.date) }} {{ performance.time }}</span>
               </div>
               <div class="info-item">
                 <svg
@@ -293,7 +213,7 @@ const getStatusClass = (status: Event['status']) => {
                     stroke-linejoin="round"
                   />
                 </svg>
-                <span>{{ event.venue }}</span>
+                <span>{{ performance.venue }}</span>
               </div>
               <div class="info-item">
                 <svg
@@ -311,14 +231,14 @@ const getStatusClass = (status: Event['status']) => {
                     stroke-linecap="round"
                   />
                 </svg>
-                <span>{{ formatPrice(event.price) }}원</span>
+                <span>{{ formatPrice(performance.price) }}원</span>
               </div>
             </div>
           </div>
 
           <div class="event-card__footer">
             <NuxtLink
-              :to="`/bookings/events/${event.id}`"
+              :to="`/bookings/events/${performance.id}`"
               class="btn btn--primary"
             >
               상세보기

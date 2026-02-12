@@ -1,12 +1,14 @@
 <script setup lang="ts">
+import { getStatusText } from '../../../../composables/usePerformances'
+
 definePageMeta({
   layout: 'bookings',
 })
 
 const route = useRoute()
-const eventId = computed(() => route.params.id as string)
+const performanceId = computed(() => route.params.id as string)
 
-interface Event {
+interface Performance {
   id: number
   name: string
   artist: string
@@ -14,7 +16,7 @@ interface Event {
   date: string
   time: string
   category: string
-  status: '예매중' | '예매마감' | '공연중' | '공연종료'
+  status: 0 | 1 // 0: 예매마감, 1: 예매중
   price: number
   image?: string
   description: string
@@ -24,7 +26,7 @@ interface Event {
 }
 
 // 샘플 공연 데이터 (실제로는 API에서 가져올 데이터)
-const events: Event[] = [
+const performances: Performance[] = [
   {
     id: 1,
     name: '서브컬처 페스티벌 2026',
@@ -33,7 +35,7 @@ const events: Event[] = [
     date: '2026-02-15',
     time: '19:00',
     category: '페스티벌',
-    status: '예매중',
+    status: 1, // 예매중
     price: 80000,
     description: '서브컬처 음악의 모든 것을 만날 수 있는 대규모 페스티벌입니다.',
     details: `
@@ -56,7 +58,7 @@ const events: Event[] = [
     date: '2026-02-20',
     time: '20:00',
     category: '록',
-    status: '예매중',
+    status: 1, // 예매중
     price: 50000,
     description: '한국 인디 록의 대표 밴드들의 무대입니다.',
     details: `
@@ -78,7 +80,7 @@ const events: Event[] = [
     date: '2026-02-18',
     time: '22:00',
     category: '일렉트로닉',
-    status: '공연중',
+    status: 1, // 예매중 (더미 데이터이므로 예매중으로 변경)
     price: 60000,
     description: '최신 일렉트로닉 음악을 즐길 수 있는 나이트입니다.',
     details: `
@@ -100,7 +102,7 @@ const events: Event[] = [
     date: '2026-02-25',
     time: '19:30',
     category: '힙합',
-    status: '예매중',
+    status: 1, // 예매중
     price: 45000,
     description: '신인 힙합 아티스트들의 무대입니다.',
     details: `
@@ -122,7 +124,7 @@ const events: Event[] = [
     date: '2026-02-22',
     time: '18:00',
     category: '포크',
-    status: '예매마감',
+    status: 0, // 예매마감
     price: 70000,
     description: '아늑한 분위기의 포크 음악 공연입니다.',
     details: `
@@ -144,7 +146,7 @@ const events: Event[] = [
     date: '2026-02-19',
     time: '21:00',
     category: '재즈',
-    status: '예매중',
+    status: 1, // 예매중
     price: 90000,
     description: '프리미엄 재즈 라이브 공연입니다.',
     details: `
@@ -160,11 +162,11 @@ const events: Event[] = [
   },
 ]
 
-const event = computed(() => {
-  return events.find((e) => e.id === Number(eventId.value))
+const performance = computed(() => {
+  return performances.find((p) => p.id === Number(performanceId.value))
 })
 
-if (!event.value) {
+if (!performance.value) {
   throw createError({
     statusCode: 404,
     statusMessage: '공연을 찾을 수 없습니다.',
@@ -172,10 +174,10 @@ if (!event.value) {
 }
 
 useSeoMeta({
-  title: `${event.value.name} - Subculture Ground`,
-  description: event.value.description,
-  ogTitle: `${event.value.name} - Subculture Ground`,
-  ogDescription: event.value.description,
+  title: `${performance.value.name} - Subculture Ground`,
+  description: performance.value.description,
+  ogTitle: `${performance.value.name} - Subculture Ground`,
+  ogDescription: performance.value.description,
 })
 
 const formatDate = (dateString: string) => {
@@ -192,25 +194,14 @@ const formatPrice = (price: number) => {
   return new Intl.NumberFormat('ko-KR').format(price)
 }
 
-const getStatusClass = (status: Event['status']) => {
-  switch (status) {
-    case '예매중':
-      return 'status--open'
-    case '예매마감':
-      return 'status--closed'
-    case '공연중':
-      return 'status--live'
-    case '공연종료':
-      return 'status--ended'
-    default:
-      return ''
-  }
+const getStatusClass = (status: Performance['status']) => {
+  return status === 1 ? 'status--open' : 'status--closed'
 }
 </script>
 
 <template>
   <div class="event-detail-page">
-    <main class="main" v-if="event">
+    <main class="main" v-if="performance">
       <div class="detail-header">
         <NuxtLink to="/bookings/events" class="back-link">
           <svg
@@ -233,14 +224,14 @@ const getStatusClass = (status: Event['status']) => {
 
         <div class="event-header">
           <div class="event-header__badges">
-            <span :class="['status-badge', getStatusClass(event.status)]">
-              {{ event.status }}
+            <span :class="['status-badge', getStatusClass(performance.status)]">
+              {{ getStatusText(performance.status) }}
             </span>
-            <span class="category-badge">{{ event.category }}</span>
+            <span class="category-badge">{{ performance.category }}</span>
           </div>
 
-          <h1 class="event-title">{{ event.name }}</h1>
-          <p class="event-artist">{{ event.artist }}</p>
+          <h1 class="event-title">{{ performance.name }}</h1>
+          <p class="event-artist">{{ performance.artist }}</p>
         </div>
       </div>
 
@@ -251,32 +242,32 @@ const getStatusClass = (status: Event['status']) => {
             <div class="info-grid">
               <div class="info-item">
                 <span class="info-label">공연일시</span>
-                <span class="info-value">{{ formatDate(event.date) }} {{ event.time }}</span>
+                <span class="info-value">{{ formatDate(performance.date) }} {{ performance.time }}</span>
               </div>
               <div class="info-item">
                 <span class="info-label">공연장</span>
-                <span class="info-value">{{ event.venue }}</span>
+                <span class="info-value">{{ performance.venue }}</span>
               </div>
               <div class="info-item">
                 <span class="info-label">티켓 가격</span>
-                <span class="info-value">{{ formatPrice(event.price) }}원</span>
+                <span class="info-value">{{ formatPrice(performance.price) }}원</span>
               </div>
               <div class="info-item">
                 <span class="info-label">관람 연령</span>
-                <span class="info-value">{{ event.ageLimit }}</span>
+                <span class="info-value">{{ performance.ageLimit }}</span>
               </div>
               <div class="info-item">
                 <span class="info-label">수용 인원</span>
-                <span class="info-value">{{ formatPrice(event.capacity) }}명</span>
+                <span class="info-value">{{ formatPrice(performance.capacity) }}명</span>
               </div>
             </div>
           </div>
 
           <div class="detail-section">
             <h2 class="section-title">공연 소개</h2>
-            <p class="event-description">{{ event.description }}</p>
+            <p class="event-description">{{ performance.description }}</p>
             <div class="event-details">
-              <pre>{{ event.details }}</pre>
+              <pre>{{ performance.details }}</pre>
             </div>
           </div>
         </div>
@@ -284,9 +275,9 @@ const getStatusClass = (status: Event['status']) => {
         <div class="detail-sidebar">
           <div class="booking-card">
             <div class="booking-card__header">
-              <span class="booking-price">{{ formatPrice(event.price) }}원</span>
-              <span class="booking-status" :class="getStatusClass(event.status)">
-                {{ event.status }}
+              <span class="booking-price">{{ formatPrice(performance.price) }}원</span>
+              <span class="booking-status" :class="getStatusClass(performance.status)">
+                {{ getStatusText(performance.status) }}
               </span>
             </div>
 
@@ -294,25 +285,25 @@ const getStatusClass = (status: Event['status']) => {
               <div class="booking-info">
                 <div class="booking-info-item">
                   <span class="booking-label">공연일</span>
-                  <span class="booking-value">{{ formatDate(event.date) }}</span>
+                  <span class="booking-value">{{ formatDate(performance.date) }}</span>
                 </div>
                 <div class="booking-info-item">
                   <span class="booking-label">시간</span>
-                  <span class="booking-value">{{ event.time }}</span>
+                  <span class="booking-value">{{ performance.time }}</span>
                 </div>
                 <div class="booking-info-item">
                   <span class="booking-label">장소</span>
-                  <span class="booking-value">{{ event.venue }}</span>
+                  <span class="booking-value">{{ performance.venue }}</span>
                 </div>
               </div>
             </div>
 
             <div class="booking-card__footer">
               <button
-                :class="['btn', 'btn--primary', 'btn--large', { 'btn--disabled': event.status === '예매마감' || event.status === '공연종료' }]"
-                :disabled="event.status === '예매마감' || event.status === '공연종료'"
+                :class="['btn', 'btn--primary', 'btn--large', { 'btn--disabled': performance.status === 0 }]"
+                :disabled="performance.status === 0"
               >
-                {{ event.status === '예매마감' ? '예매 마감' : event.status === '공연종료' ? '공연 종료' : '예매하기' }}
+                {{ performance.status === 0 ? '예매 마감' : '예매하기' }}
               </button>
             </div>
           </div>
