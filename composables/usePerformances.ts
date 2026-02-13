@@ -136,6 +136,21 @@ export const usePerformances = () => {
   }
 
   /**
+   * 단일 공연 조회
+   * @param id 공연 ID
+   * @returns 공연 정보
+   */
+  async function getPerformanceById(id: number): Promise<Performance | null> {
+    try {
+      const { data } = await apiClient.get<ApiPerformanceRow>(`/events/${id}`)
+      return mapApiPerformanceToPerformance(data)
+    } catch (err) {
+      console.error('공연 조회 실패:', err)
+      return null
+    }
+  }
+
+  /**
    * 공연 목록 (computed)
    * performancesData가 null일 경우 빈 배열 반환
    */
@@ -148,5 +163,6 @@ export const usePerformances = () => {
     fetchError,
     loadPerformances,
     refreshPerformances,
+    getPerformanceById,
   }
 }
