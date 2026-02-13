@@ -14,12 +14,22 @@ useSeoMeta({
 })
 
 const auth = useAuth()
+const route = useRoute()
 
 const email = ref('')
 const password = ref('')
 const rememberMe = ref(false)
 const isLoading = ref(false)
 const errorMessage = ref('')
+
+// redirect 쿼리 파라미터에서 이전 페이지 경로 가져오기
+const redirectPath = computed(() => {
+  const redirect = route.query.redirect
+  if (typeof redirect === 'string' && redirect) {
+    return redirect
+  }
+  return '/'
+})
 
 const isEmailValid = computed(() => {
   if (!email.value) return true // 초기 상태에서는 에러 표시 안 함
@@ -47,8 +57,8 @@ const handleSubmit = async () => {
       email: email.value,
       password: password.value,
     })
-    // 로그인 성공 시 홈으로 이동
-    await navigateTo('/')
+    // 로그인 성공 시 이전 페이지로 이동 (redirect 파라미터가 있으면 해당 경로로, 없으면 홈으로)
+    await navigateTo(redirectPath.value)
   } catch (error: any) {
     const message =
       error?.response?.data?.message ||
