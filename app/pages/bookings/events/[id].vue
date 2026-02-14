@@ -102,19 +102,15 @@ const totalPrice = computed(() => {
 })
 
 const handleBookingConfirm = () => {
-  // 예매 확인 로직 (추후 구현)
-  console.log('예매 확인:', {
-    performanceId: performanceId.value,
-    ticketCount: ticketCount.value,
-    totalPrice: totalPrice.value,
-  })
-  
-  // 모달 닫기
+  // 예매 페이지로 이동 (공연 ID, 티켓 수 전달)
+  const eventId = performanceId.value
+  const count = ticketCount.value
   isModalOpen.value = false
   ticketCount.value = 1
-  
-  // TODO: 실제 예매 API 호출
-  // 예매 완료 후 예매 내역 페이지로 이동하거나 성공 메시지 표시
+  navigateTo({
+    path: '/bookings/events/booking',
+    query: { eventId: String(eventId), count: String(count) },
+  })
 }
 </script>
 
