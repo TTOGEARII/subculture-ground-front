@@ -9,6 +9,7 @@ export interface Performance {
   time: string
   category: string[] // JSON 배열 형태 (예: ["록","jpop"])
   status: 0 | 1 // 0: 예매마감, 1: 예매중
+  /** 가격(원). sb_performances에 없으면 0, 실제는 sb_ticket_info(ticket_idx)에서 조회 가능 */
   price: number
   image?: string
   description: string
@@ -27,7 +28,7 @@ interface ApiPerformanceRow {
   performanceTime: string
   performanceCategory: string[] // 백엔드에서 배열로 변환되어 반환됨
   performanceStatus: 0 | 1 // 0: 예매마감, 1: 예매중
-  performancePrice: number
+  performancePrice?: number // 제거됨. 가격은 sb_ticket_info(ticket_idx)에서 조회
   performanceImage?: string | null
   performanceDescription?: string | null
 }
@@ -92,7 +93,7 @@ function mapApiPerformanceToPerformance(row: ApiPerformanceRow): Performance {
     time: row.performanceTime,
     category: parseCategory(row.performanceCategory), // 백엔드에서 배열로 변환되어 오지만 안전성을 위해 파싱
     status: row.performanceStatus,
-    price: row.performancePrice,
+    price: row.performancePrice ?? 0, // sb_performances에서 제거됨, ticket_idx로 조회 시 사용
     image: row.performanceImage ?? undefined,
     description: row.performanceDescription ?? '',
   }

@@ -153,7 +153,21 @@ const handleConfirmBooking = () => {
 
 <style scoped>
 .booking-page {
-  min-height: 100%;
+  --bg: #070a13;
+  --text: rgba(255, 255, 255, 0.92);
+  --muted: rgba(255, 255, 255, 0.66);
+
+  min-height: 100vh;
+  background: radial-gradient(1200px 800px at 20% 0%, rgba(124, 58, 237, 0.28), transparent 55%),
+    radial-gradient(900px 600px at 80% 10%, rgba(34, 197, 94, 0.18), transparent 50%),
+    var(--bg);
+  color: var(--text);
+}
+
+.booking-page .main {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 26px 20px 56px;
 }
 
 .booking-header {
