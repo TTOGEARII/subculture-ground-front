@@ -1,4 +1,4 @@
-import { useApi } from './useUtil'
+import { useApi, useEncrypt } from './useUtil'
 
 export interface Performance {
   id: number
@@ -105,6 +105,7 @@ function mapApiPerformanceToPerformance(row: ApiPerformanceRow): Performance {
  */
 export const usePerformances = () => {
   const apiClient = useApi()
+  const { encryptRequest, decryptResponse } = useEncrypt()
 
   const performancesData = ref<Performance[]>([])
   const loading = ref(true)
@@ -152,6 +153,115 @@ export const usePerformances = () => {
   }
 
   /**
+   * 내 공연 목록 로드 (인증된 사용자의 공연만)
+   */
+  async function loadMyPerformances() {
+    loading.value = true
+    fetchError.value = null
+    try {
+      const { data } = await apiClient.get<ApiPerformanceRow[]>('/events/my')
+      performancesData.value = data.map(mapApiPerformanceToPerformance)
+    } catch (err) {
+      fetchError.value = err instanceof Error ? err : new Error(String(err))
+      performancesData.value = []
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * 공연 생성
+   */
+  async function createPerformance(performanceData: {
+    performanceName: string
+    performanceArtist: string
+    performanceVenue: string
+    performanceDate: string
+    performanceTime: string
+    performanceImage?: string | null
+    performanceDescription?: string | null
+    ticketIdx?: number
+    performanceCategory?: string
+  }): Promise<Performance> {
+    try {
+      const encryptedPayload = encryptRequest(performanceData)
+      const response = await apiClient.post<{ encrypted: string }>(
+        '/events',
+        encryptedPayload,
+      )
+      
+      const decryptedData = decryptResponse<ApiPerformanceRow>(response.data.encrypted)
+      const newPerformance = mapApiPerformanceToPerformance(decryptedData)
+      
+      // 목록에 추가
+      performancesData.value = [newPerformance, ...performancesData.value]
+      
+      return newPerformance
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err))
+      fetchError.value = error
+      throw error
+    }
+  }
+
+  /**
+   * 공연 수정
+   */
+  async function updatePerformance(
+    id: number,
+    performanceData: Partial<{
+      performanceName: string
+      performanceArtist: string
+      performanceVenue: string
+      performanceDate: string
+      performanceTime: string
+      performanceImage?: string | null
+      performanceDescription?: string | null
+      ticketIdx?: number
+      performanceCategory?: string
+    }>,
+  ): Promise<Performance> {
+    try {
+      const encryptedPayload = encryptRequest(performanceData)
+      const response = await apiClient.put<{ encrypted: string }>(
+        `/events/${id}`,
+        encryptedPayload,
+      )
+      
+      const decryptedData = decryptResponse<ApiPerformanceRow>(response.data.encrypted)
+      const updatedPerformance = mapApiPerformanceToPerformance(decryptedData)
+      
+      // 목록에서 업데이트
+      const index = performancesData.value.findIndex((p) => p.id === id)
+      if (index !== -1) {
+        performancesData.value[index] = updatedPerformance
+      }
+      
+      return updatedPerformance
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err))
+      fetchError.value = error
+      throw error
+    }
+  }
+
+  /**
+   * 공연 삭제
+   */
+  async function deletePerformance(id: number): Promise<void> {
+    try {
+      await apiClient.delete(`/events/${id}`)
+      
+      // 목록에서 제거
+      performancesData.value = performancesData.value.filter((p) => p.id !== id)
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err))
+      fetchError.value = error
+      throw error
+    }
+  }
+
+  /**
    * 공연 목록 (computed)
    * performancesData가 null일 경우 빈 배열 반환
    */
@@ -163,7 +273,11 @@ export const usePerformances = () => {
     loading,
     fetchError,
     loadPerformances,
+    loadMyPerformances,
     refreshPerformances,
     getPerformanceById,
+    createPerformance,
+    updatePerformance,
+    deletePerformance,
   }
 }

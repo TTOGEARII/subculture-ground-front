@@ -29,6 +29,7 @@ export const useApi = () => {
   /**
    * 요청 인터셉터
    * - 토큰이 있으면 Authorization 헤더에 자동 추가
+   * - FormData인 경우 Content-Type 헤더 제거 (브라우저가 자동으로 설정)
    * - 개발 환경에서 요청 로그 출력 (비밀번호 마스킹)
    */
   apiClientInstance.interceptors.request.use(
@@ -39,10 +40,15 @@ export const useApi = () => {
         config.headers.Authorization = `Bearer ${token}`
       }
 
+      // FormData인 경우 Content-Type 헤더 제거 (브라우저가 자동으로 multipart/form-data 설정)
+      if (config.data instanceof FormData) {
+        delete config.headers['Content-Type']
+      }
+
       // 개발 환경에서만 디버깅 (프로덕션에서는 민감 정보 노출 방지)
       if (process.env.NODE_ENV === 'development') {
         // 비밀번호 필드가 있으면 마스킹하여 로그
-        if (config.data) {
+        if (config.data && !(config.data instanceof FormData)) {
           try {
             const data =
               typeof config.data === 'string'

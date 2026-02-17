@@ -1,6 +1,9 @@
 <script setup lang="ts">
 // 회원정보 페이지
+// Nuxt composable auto-import 사용 (런타임에서는 자동 import됨)
+// TypeScript 인식을 위해 명시적 import 추가
 import { useAuth } from '../../../composables/useAuth'
+
 const { user, isAuthenticated, fetchProfile, logout } = useAuth()
 
 onMounted(async () => {

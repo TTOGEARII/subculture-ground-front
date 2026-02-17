@@ -86,15 +86,26 @@ export const useAuth = () => {
    * @param payload 이메일, 비밀번호, 이름 등 회원가입 정보
    */
   const register = async (payload: RegisterPayload) => {
-    // 요청 데이터 암호화 및 전송
-    const response = await apiClient.post<{ encrypted: string }>(
-      '/auth/register',
-      encryptRequest(payload),
-    )
+    try {
+      // 요청 데이터 암호화 및 전송
+      const encryptedPayload = encryptRequest(payload)
+      const response = await apiClient.post<{ encrypted: string }>(
+        '/auth/register',
+        encryptedPayload,
+      )
 
-    // 응답 데이터 복호화
-    const decryptedData = decryptResponse<AuthResponse>(response.data.encrypted)
-    setAuthState(decryptedData)
+      // 응답 데이터 복호화
+      const decryptedData = decryptResponse<AuthResponse>(response.data.encrypted)
+      setAuthState(decryptedData)
+    } catch (error: any) {
+      console.error('회원가입 API 에러:', error)
+      // 네트워크 에러인 경우
+      if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK' || !error.response) {
+        throw new Error('서버에 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요.')
+      }
+      // 다른 에러는 그대로 throw
+      throw error
+    }
   }
 
   /**

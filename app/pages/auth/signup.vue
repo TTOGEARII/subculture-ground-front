@@ -19,10 +19,44 @@ const email = ref('')
 const password = ref('')
 const name = ref('')
 const phone = ref('')
+const phoneDisplay = ref('') // 화면에 표시할 포맷된 전화번호
 const birthDate = ref('')
 
 const isLoading = ref(false)
 const errorMessage = ref('')
+
+// 전화번호 포맷팅 함수 (010-8447-4592 형식)
+const formatPhoneNumber = (value: string): string => {
+  // 숫자만 추출
+  const numbers = value.replace(/\D/g, '')
+  
+  // 11자리 제한
+  const limited = numbers.slice(0, 11)
+  
+  // 포맷팅
+  if (limited.length <= 3) {
+    return limited
+  } else if (limited.length <= 7) {
+    return `${limited.slice(0, 3)}-${limited.slice(3)}`
+  } else {
+    return `${limited.slice(0, 3)}-${limited.slice(3, 7)}-${limited.slice(7)}`
+  }
+}
+
+// 전화번호 입력 핸들러
+const handlePhoneInput = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const formatted = formatPhoneNumber(target.value)
+  phoneDisplay.value = formatted
+  // 백엔드로 전송할 값은 하이픈 제거
+  phone.value = formatted.replace(/\D/g, '')
+}
+
+// 전화번호 하이픈 제거 (백엔드 전송용)
+const getPhoneForSubmit = (): string | undefined => {
+  const cleaned = phone.value.replace(/\D/g, '')
+  return cleaned || undefined
+}
 
 const isEmailValid = computed(() => {
   if (!email.value) return true
@@ -56,12 +90,21 @@ const handleSubmit = async () => {
       email: email.value,
       password: password.value,
       name: name.value,
-      phone: phone.value || undefined,
+      phone: getPhoneForSubmit(),
       birthDate: birthDate.value || undefined,
     })
 
     await navigateTo('/')
   } catch (error: any) {
+    console.error('회원가입 에러:', error)
+    
+    // 네트워크 에러인 경우
+    if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK' || !error.response) {
+      errorMessage.value = '서버에 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요.'
+      return
+    }
+    
+    // 응답이 있는 경우
     const message =
       error?.response?.data?.message ||
       error?.response?.data?.error ||
@@ -150,11 +193,13 @@ const handleSubmit = async () => {
               <label for="phone" class="form-label">전화번호 (선택)</label>
               <input
                 id="phone"
-                v-model="phone"
+                :value="phoneDisplay"
+                @input="handlePhoneInput"
                 type="tel"
                 class="form-input"
                 placeholder="010-0000-0000"
                 autocomplete="tel"
+                maxlength="13"
               />
             </div>
 
