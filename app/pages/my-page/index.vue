@@ -183,7 +183,7 @@ const formatPhone = (phone: string | null) => {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.8), rgba(139, 92, 246, 0.8));
+  background: #ff385c;
   display: flex;
   align-items: center;
   justify-content: center;

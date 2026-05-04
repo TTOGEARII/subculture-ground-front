@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { usePerformances, type Performance } from '../../../../composables/usePerformances'
+import { usePerformances, type Performance, type TicketInfo } from '../../../../composables/usePerformances'
 import { useAuth } from '../../../../composables/useAuth'
+import { useApi } from '../../../../composables/useUtil'
 
 definePageMeta({
   layout: 'bookings',
@@ -10,14 +11,20 @@ const route = useRoute()
 const router = useRouter()
 
 const eventId = computed(() => Number(route.query.eventId))
+const ticketIdxParam = computed(() => Number(route.query.ticketIdx) || null)
 const ticketCount = computed(() => Math.max(1, Math.min(10, Number(route.query.count) || 1)))
 
-const { getPerformanceById } = usePerformances()
-const { isAuthenticated } = useAuth()
+const { getPerformanceById, getTicketsByPerformanceId } = usePerformances()
+const { isAuthenticated, user } = useAuth()
+const apiClient = useApi()
 
 const performance = ref<Performance | null>(null)
+const selectedTicket = ref<TicketInfo | null>(null)
 const loading = ref(true)
+const submitting = ref(false)
 const error = ref<Error | null>(null)
+const bookingError = ref('')
+const bookingSuccess = ref(false)
 
 onMounted(async () => {
   if (!eventId.value || Number.isNaN(eventId.value)) {
@@ -32,23 +39,28 @@ onMounted(async () => {
   loading.value = true
   error.value = null
   try {
-    const data = await getPerformanceById(eventId.value)
+    const [data, tickets] = await Promise.all([
+      getPerformanceById(eventId.value),
+      getTicketsByPerformanceId(eventId.value),
+    ])
     if (!data) {
-      throw createError({
-        statusCode: 404,
-        statusMessage: '공연을 찾을 수 없습니다.',
-      })
+      throw createError({ statusCode: 404, statusMessage: '공연을 찾을 수 없습니다.' })
     }
     if (data.status === 0) {
       await navigateTo(`/bookings/events/${eventId.value}`)
       return
     }
     performance.value = data
+
+    // ticketIdx 파라미터로 선택된 티켓 찾기
+    if (ticketIdxParam.value) {
+      selectedTicket.value = tickets.find((t) => t.idx === ticketIdxParam.value) ?? tickets[0] ?? null
+    } else {
+      selectedTicket.value = tickets[0] ?? null
+    }
   } catch (err) {
     error.value = err instanceof Error ? err : new Error(String(err))
-    if (err && typeof err === 'object' && 'statusCode' in err && (err as { statusCode: number }).statusCode === 404) {
-      throw err
-    }
+    if (err && typeof err === 'object' && 'statusCode' in err && (err as any).statusCode === 404) throw err
   } finally {
     loading.value = false
   }
@@ -59,7 +71,8 @@ useSeoMeta({
   description: '공연 예매 정보를 확인하고 결제를 진행하세요.',
 })
 
-const totalPrice = computed(() => (performance.value ? performance.value.price * ticketCount.value : 0))
+const ticketPrice = computed(() => selectedTicket.value?.ticketPrice ?? performance.value?.price ?? 0)
+const totalPrice = computed(() => ticketPrice.value * ticketCount.value)
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString)
@@ -67,33 +80,66 @@ const formatDate = (dateString: string) => {
   const month = date.getMonth() + 1
   const day = date.getDate()
   const weekdays = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일']
-  const weekday = weekdays[date.getDay()]
-  return `${year}년 ${month}월 ${day}일 (${weekday})`
+  return `${year}년 ${month}월 ${day}일 (${weekdays[date.getDay()]})`
 }
 
-const formatPrice = (price: number) => new Intl.NumberFormat('ko-KR').format(price)
+const formatPrice = (price: number) =>
+  price === 0 ? '무료' : new Intl.NumberFormat('ko-KR').format(price) + '원'
 
 const goBackToDetail = () => {
   router.push(`/bookings/events/${eventId.value}`)
 }
 
-const handleConfirmBooking = () => {
-  // TODO: 실제 결제/예매 API 연동
-  // 예매 확정 후 예매 완료 페이지로 이동
-  console.log('예매 확정:', { eventId: eventId.value, count: ticketCount.value, total: totalPrice.value })
+const handleConfirmBooking = async () => {
+  if (!selectedTicket.value || !user.value) return
+
+  submitting.value = true
+  bookingError.value = ''
+  try {
+    await apiClient.post('/ticket-user', {
+      ticketIdx: selectedTicket.value.idx,
+      userIdx: user.value.idx,
+      ticketCnt: ticketCount.value,
+      ticketTotalPrice: totalPrice.value,
+      ticketStatus: 0, // 0: 대기
+    })
+    bookingSuccess.value = true
+  } catch (err: any) {
+    bookingError.value =
+      err?.response?.data?.message || err?.message || '예매 중 오류가 발생했습니다.'
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
 <template>
   <div class="booking-page">
-    <main class="main" v-if="!loading && performance">
+
+    <!-- 예매 성공 -->
+    <div v-if="bookingSuccess" class="success-state">
+      <div class="success-icon">✓</div>
+      <h2 class="success-title">예매가 완료됐습니다!</h2>
+      <p class="success-desc">
+        {{ performance?.name }}<br/>
+        {{ ticketCount }}매 · {{ formatPrice(totalPrice) }}
+      </p>
+      <p class="success-notice">입금 확인 후 예매가 승인됩니다.</p>
+      <div class="success-actions">
+        <NuxtLink to="/my-page" class="btn btn--primary">마이페이지 확인</NuxtLink>
+        <NuxtLink to="/bookings/events" class="btn btn--secondary">공연 목록으로</NuxtLink>
+      </div>
+    </div>
+
+    <!-- 예매 폼 -->
+    <main class="main" v-else-if="!loading && performance">
       <div class="booking-header">
-        <NuxtLink to="/bookings/events" class="back-link">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 15l-5-5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <button class="back-link" @click="goBackToDetail">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M12 15l-5-5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          공연 리스트
-        </NuxtLink>
+          공연 상세로
+        </button>
         <h1 class="page-title">예매하기</h1>
       </div>
 
@@ -117,51 +163,58 @@ const handleConfirmBooking = () => {
               <span class="summary-label">공연장</span>
               <span class="summary-value">{{ performance.venue }}</span>
             </div>
+            <div v-if="selectedTicket" class="summary-row">
+              <span class="summary-label">티켓 종류</span>
+              <span class="summary-value">{{ selectedTicket.ticketName || '일반 티켓' }}</span>
+            </div>
             <div class="summary-row">
               <span class="summary-label">티켓 수량</span>
               <span class="summary-value">{{ ticketCount }}매</span>
             </div>
             <div class="summary-row summary-row--total">
               <span class="summary-label">총 결제금액</span>
-              <span class="summary-value">{{ formatPrice(totalPrice) }}원</span>
+              <span class="summary-value">{{ formatPrice(totalPrice) }}</span>
             </div>
           </div>
         </section>
+
+        <div v-if="bookingError" class="booking-error">{{ bookingError }}</div>
 
         <div class="booking-actions">
           <button type="button" class="btn btn--secondary" @click="goBackToDetail">
             이전으로
           </button>
-          <button type="button" class="btn btn--primary" @click="handleConfirmBooking">
-            예매 확정
+          <button
+            type="button"
+            class="btn btn--primary"
+            :disabled="submitting"
+            @click="handleConfirmBooking"
+          >
+            <span v-if="submitting">처리 중...</span>
+            <span v-else>예매 확정</span>
           </button>
         </div>
       </div>
     </main>
 
-    <div v-if="loading" class="empty-state">
+    <div v-if="loading && !bookingSuccess" class="empty-state">
       <p class="empty-text">예매 정보를 불러오는 중입니다.</p>
     </div>
 
-    <div v-if="error && !loading" class="empty-state">
+    <div v-if="error && !loading && !bookingSuccess" class="empty-state">
       <p class="empty-text">예매 정보를 불러오지 못했습니다.</p>
       <p class="empty-hint">{{ error.message }}</p>
-      <NuxtLink to="/bookings/events" class="btn btn--primary">공연 리스트로 돌아가기</NuxtLink>
+      <NuxtLink to="/bookings/events" class="btn btn--primary" style="margin-top:12px">공연 리스트로 돌아가기</NuxtLink>
     </div>
   </div>
 </template>
 
 <style scoped>
 .booking-page {
-  --bg: #070a13;
-  --text: rgba(255, 255, 255, 0.92);
-  --muted: rgba(255, 255, 255, 0.66);
-
   min-height: 100vh;
-  background: radial-gradient(1200px 800px at 20% 0%, rgba(124, 58, 237, 0.28), transparent 55%),
-    radial-gradient(900px 600px at 80% 10%, rgba(34, 197, 94, 0.18), transparent 50%),
-    var(--bg);
-  color: var(--text);
+  background: #ffffff;
+  color: #222222;
+  font-family: Circular, -apple-system, system-ui, Roboto, 'Helvetica Neue', sans-serif;
 }
 
 .booking-page .main {
@@ -178,22 +231,22 @@ const handleConfirmBooking = () => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--muted, rgba(255, 255, 255, 0.6));
+  color: #6a6a6a;
   text-decoration: none;
   font-size: 14px;
   margin-bottom: 16px;
-  transition: color 0.2s ease;
+  transition: color 120ms ease;
 }
 
 .back-link:hover {
-  color: var(--text, #ffffff);
+  color: #222222;
 }
 
 .page-title {
   margin: 0;
   font-size: 24px;
   font-weight: 700;
-  color: var(--text, #ffffff);
+  color: #222222;
 }
 
 .booking-content {
@@ -208,14 +261,14 @@ const handleConfirmBooking = () => {
   margin: 0 0 16px;
   font-size: 18px;
   font-weight: 600;
-  color: var(--text, #ffffff);
+  color: #222222;
 }
 
 .performance-summary {
   padding: 24px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  background: #f7f7f7;
+  border: 1px solid #ebebeb;
+  border-radius: 14px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -229,31 +282,31 @@ const handleConfirmBooking = () => {
 
 .summary-label {
   font-size: 14px;
-  color: var(--muted, rgba(255, 255, 255, 0.6));
+  color: #6a6a6a;
 }
 
 .summary-value {
   font-size: 14px;
   font-weight: 500;
-  color: var(--text, #ffffff);
+  color: #222222;
 }
 
 .summary-row--total {
   padding-top: 16px;
   margin-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid #dddddd;
 }
 
 .summary-row--total .summary-label {
   font-size: 16px;
   font-weight: 700;
-  color: var(--text, #ffffff);
+  color: #222222;
 }
 
 .summary-row--total .summary-value {
   font-size: 18px;
   font-weight: 700;
-  color: #4ade80;
+  color: #ff385c;
 }
 
 .booking-actions {
@@ -266,34 +319,117 @@ const handleConfirmBooking = () => {
   flex: 1;
   min-width: 120px;
   padding: 14px 24px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
+  transition: background-color 120ms ease;
 }
 
 .btn--secondary {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text, #ffffff);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #ffffff;
+  color: #222222;
+  border: 1px solid #dddddd;
 }
 
 .btn--secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #f7f7f7;
 }
 
 .btn--primary {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.8), rgba(139, 92, 246, 0.8));
+  background: #ff385c;
   color: #ffffff;
-  border: 1px solid rgba(124, 58, 237, 0.5);
+  border: 1px solid #ff385c;
 }
 
 .btn--primary:hover {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 1), rgba(139, 92, 246, 1));
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+  background: #e00b41;
+  border-color: #e00b41;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #6a6a6a;
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 16px;
+  transition: color 120ms ease;
+}
+
+.back-link:hover {
+  color: #222222;
+}
+
+.booking-error {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: rgba(193, 53, 21, 0.08);
+  border: 1px solid rgba(193, 53, 21, 0.3);
+  color: #c13515;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+/* 예매 성공 */
+.success-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 40px 20px;
+  text-align: center;
+  gap: 12px;
+}
+
+.success-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #ff385c;
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.success-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #222222;
+}
+
+.success-desc {
+  margin: 0;
+  font-size: 16px;
+  color: #222222;
+  line-height: 1.6;
+}
+
+.success-notice {
+  margin: 0;
+  font-size: 14px;
+  color: #6a6a6a;
+  padding: 12px 20px;
+  background: #f7f7f7;
+  border-radius: 8px;
+}
+
+.success-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 8px;
 }
 
 .empty-state {
@@ -309,12 +445,12 @@ const handleConfirmBooking = () => {
 .empty-text {
   margin: 0;
   font-size: 16px;
-  color: var(--text, #ffffff);
+  color: #222222;
 }
 
 .empty-hint {
   margin: 0;
   font-size: 14px;
-  color: var(--muted, rgba(255, 255, 255, 0.6));
+  color: #6a6a6a;
 }
 </style>

@@ -1,5 +1,17 @@
 import { useApi, useEncrypt } from './useUtil'
 
+export interface TicketInfo {
+  idx: number
+  pmIdx: number
+  ticketName: string | null
+  ticketCount: number
+  ticketMax: number
+  ticketMin: number
+  ticketPrice: number
+  ticketType: number
+  delFlag: number
+}
+
 export interface Performance {
   id: number
   name: string
@@ -246,6 +258,19 @@ export const usePerformances = () => {
   }
 
   /**
+   * 특정 공연의 티켓 목록 조회
+   */
+  async function getTicketsByPerformanceId(pmIdx: number): Promise<TicketInfo[]> {
+    try {
+      const { data } = await apiClient.get<TicketInfo[]>(`/ticket-info?pmIdx=${pmIdx}`)
+      return data.filter((t) => t.delFlag === 0)
+    } catch (err) {
+      console.error('티켓 조회 실패:', err)
+      return []
+    }
+  }
+
+  /**
    * 공연 삭제
    */
   async function deletePerformance(id: number): Promise<void> {
@@ -276,6 +301,7 @@ export const usePerformances = () => {
     loadMyPerformances,
     refreshPerformances,
     getPerformanceById,
+    getTicketsByPerformanceId,
     createPerformance,
     updatePerformance,
     deletePerformance,

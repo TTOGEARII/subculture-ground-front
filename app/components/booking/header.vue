@@ -1,11 +1,9 @@
 <script setup lang="ts">
-// Nuxt composable 명시적 import (Docker 환경에서 안정적)
 import { useAuth } from '../../../composables/useAuth'
 
 const { isAuthenticated, user, logout } = useAuth()
 const isDropdownOpen = ref(false)
 
-// 드롭다운 외부 클릭 시 닫기
 const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as HTMLElement
   if (!target.closest('.profile-dropdown')) {
@@ -39,7 +37,6 @@ const handleLogout = async () => {
   await logout()
 }
 
-// 프로필 사진 초기 이니셜 가져오기
 const getInitials = computed(() => {
   if (!user.value?.name) return 'U'
   return user.value.name.charAt(0).toUpperCase()
@@ -58,7 +55,6 @@ const getInitials = computed(() => {
       <NuxtLink class="nav__link" to="/bookings/events">예매</NuxtLink>
       <NuxtLink class="nav__link" to="/about">소개</NuxtLink>
 
-      <!-- 로그인 상태에 따라 버튼 토글 -->
       <NuxtLink
         v-if="!isAuthenticated"
         class="nav__link nav__link--login"
@@ -66,8 +62,7 @@ const getInitials = computed(() => {
       >
         로그인
       </NuxtLink>
-      
-      <!-- 프로필 드롭다운 -->
+
       <div v-else class="profile-dropdown">
         <button
           type="button"
@@ -80,25 +75,16 @@ const getInitials = computed(() => {
           </div>
         </button>
 
-        <!-- 드롭다운 메뉴 -->
         <Transition name="dropdown">
           <div v-if="isDropdownOpen" class="dropdown-menu">
-            <button
-              type="button"
-              class="dropdown-item"
-              @click="handleMyPage"
-            >
+            <button type="button" class="dropdown-item" @click="handleMyPage">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M10 10a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                 <path d="M17 19v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
               마이페이지
             </button>
-            <button
-              type="button"
-              class="dropdown-item"
-              @click="handleLogout"
-            >
+            <button type="button" class="dropdown-item" @click="handleLogout">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M7 17h6M13 7l3 3-3 3M10 3H4a1 1 0 00-1 1v12a1 1 0 001 1h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
@@ -130,20 +116,19 @@ const getInitials = computed(() => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.8), rgba(139, 92, 246, 0.8));
+  background: #ff385c;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
   font-weight: 600;
   font-size: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 2px solid #dddddd;
+  transition: box-shadow 0.2s ease;
 }
 
 .profile-button:hover .profile-avatar {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+  box-shadow: rgba(0,0,0,0.1) 0 2px 8px;
 }
 
 .dropdown-menu {
@@ -151,13 +136,12 @@ const getInitials = computed(() => {
   top: calc(100% + 8px);
   right: 0;
   min-width: 180px;
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #ffffff;
+  border: 1px solid #dddddd;
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px 0, rgba(0,0,0,0.1) 0 4px 8px 0;
   padding: 8px;
   z-index: 1000;
-  backdrop-filter: blur(8px);
 }
 
 .dropdown-item {
@@ -169,36 +153,35 @@ const getInitials = computed(() => {
   border-radius: 8px;
   border: none;
   background: transparent;
-  color: #e5e7eb;
+  color: #222222;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 120ms ease;
   text-align: left;
 }
 
 .dropdown-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: #f7f7f7;
 }
 
 .dropdown-item svg {
   flex-shrink: 0;
-  color: #9ca3af;
+  color: #6a6a6a;
 }
 
 .dropdown-item:hover svg {
-  color: #e5e7eb;
+  color: #222222;
 }
 
-/* 드롭다운 애니메이션 */
 .dropdown-enter-active,
 .dropdown-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .dropdown-enter-from,
 .dropdown-leave-to {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: translateY(-6px);
 }
 </style>

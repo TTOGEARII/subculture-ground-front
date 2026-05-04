@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// Nuxt composable 명시적 import (Docker 환경에서 안정적)
 import { useAuth } from '../../../composables/useAuth'
 
 definePageMeta({
@@ -22,7 +21,6 @@ const rememberMe = ref(false)
 const isLoading = ref(false)
 const errorMessage = ref('')
 
-// redirect 쿼리 파라미터에서 이전 페이지 경로 가져오기
 const redirectPath = computed(() => {
   const redirect = route.query.redirect
   if (typeof redirect === 'string' && redirect) {
@@ -32,13 +30,13 @@ const redirectPath = computed(() => {
 })
 
 const isEmailValid = computed(() => {
-  if (!email.value) return true // 초기 상태에서는 에러 표시 안 함
+  if (!email.value) return true
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   return emailRegex.test(email.value)
 })
 
 const isPasswordValid = computed(() => {
-  if (!password.value) return true // 초기 상태에서는 에러 표시 안 함
+  if (!password.value) return true
   return password.value.length >= 6
 })
 
@@ -57,7 +55,6 @@ const handleSubmit = async () => {
       email: email.value,
       password: password.value,
     })
-    // 로그인 성공 시 이전 페이지로 이동 (redirect 파라미터가 있으면 해당 경로로, 없으면 홈으로)
     await navigateTo(redirectPath.value)
   } catch (error: any) {
     const message =
@@ -93,7 +90,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
       </nav>
     </header>
 
-    <main class="main">
+    <main class="main-center">
       <div class="login-container">
         <div class="login-card">
           <div class="login-header">
@@ -142,11 +139,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
 
             <div class="form-options">
               <label class="checkbox-label">
-                <input
-                  v-model="rememberMe"
-                  type="checkbox"
-                  class="checkbox-input"
-                />
+                <input v-model="rememberMe" type="checkbox" class="checkbox-input" />
                 <span class="checkbox-text">로그인 상태 유지</span>
               </label>
               <NuxtLink to="/auth/forgot-password" class="forgot-link">
@@ -156,7 +149,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
 
             <button
               type="submit"
-              class="btn btn--primary btn--large btn--full"
+              class="btn-submit"
               :disabled="!canSubmit || isLoading"
             >
               <span v-if="isLoading">로그인 중...</span>
@@ -169,46 +162,19 @@ const handleKeyPress = (e: KeyboardEvent) => {
           </div>
 
           <div class="social-login">
-            <button type="button" class="btn btn--social btn--google">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 20 20"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M19.6 10.227c0-.709-.064-1.39-.182-2.045H10v3.868h5.382a4.6 4.6 0 01-1.996 3.018v2.51h3.232c1.891-1.742 2.982-4.305 2.982-7.35z"
-                  fill="#4285F4"
-                />
-                <path
-                  d="M10 20c2.7 0 4.964-.895 6.618-2.423l-3.232-2.509c-.895.6-2.04.955-3.386.955-2.605 0-4.81-1.76-5.595-4.123H1.064v2.59A9.996 9.996 0 0010 20z"
-                  fill="#34A853"
-                />
-                <path
-                  d="M4.405 11.9c-.2-.6-.314-1.24-.314-1.9 0-.66.114-1.3.314-1.9V5.51H1.064A9.996 9.996 0 000 10c0 1.614.386 3.14 1.064 4.49l3.34-2.59z"
-                  fill="#FBBC05"
-                />
-                <path
-                  d="M10 3.977c1.468 0 2.786.505 3.823 1.496l2.868-2.868C14.959.99 12.695 0 10 0 6.09 0 2.71 2.24 1.064 5.51l3.34 2.59C5.19 5.736 7.395 3.977 10 3.977z"
-                  fill="#EA4335"
-                />
+            <button type="button" class="btn-social btn-google">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19.6 10.227c0-.709-.064-1.39-.182-2.045H10v3.868h5.382a4.6 4.6 0 01-1.996 3.018v2.51h3.232c1.891-1.742 2.982-4.305 2.982-7.35z" fill="#4285F4"/>
+                <path d="M10 20c2.7 0 4.964-.895 6.618-2.423l-3.232-2.509c-.895.6-2.04.955-3.386.955-2.605 0-4.81-1.76-5.595-4.123H1.064v2.59A9.996 9.996 0 0010 20z" fill="#34A853"/>
+                <path d="M4.405 11.9c-.2-.6-.314-1.24-.314-1.9 0-.66.114-1.3.314-1.9V5.51H1.064A9.996 9.996 0 000 10c0 1.614.386 3.14 1.064 4.49l3.34-2.59z" fill="#FBBC05"/>
+                <path d="M10 3.977c1.468 0 2.786.505 3.823 1.496l2.868-2.868C14.959.99 12.695 0 10 0 6.09 0 2.71 2.24 1.064 5.51l3.34 2.59C5.19 5.736 7.395 3.977 10 3.977z" fill="#EA4335"/>
               </svg>
               Google로 로그인
             </button>
 
-            <button type="button" class="btn btn--social btn--kakao">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 20 20"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M10 0C4.477 0 0 3.582 0 8c0 2.914 1.618 5.465 4 6.909L3 20l5.355-2.78C9.17 17.52 9.58 17.5 10 17.5c5.523 0 10-3.582 10-8S15.523 0 10 0z"
-                  fill="#3C1E1E"
-                />
+            <button type="button" class="btn-social btn-kakao">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10 0C4.477 0 0 3.582 0 8c0 2.914 1.618 5.465 4 6.909L3 20l5.355-2.78C9.17 17.52 9.58 17.5 10 17.5c5.523 0 10-3.582 10-8S15.523 0 10 0z" fill="#3C1E1E"/>
               </svg>
               Kakao로 로그인
             </button>
@@ -224,7 +190,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
       </div>
     </main>
 
-    <footer class="footer">
+    <footer class="page-footer">
       <p class="footer__text">
         © {{ new Date().getFullYear() }} Subculture Ground. All rights reserved.
       </p>
@@ -233,16 +199,67 @@ const handleKeyPress = (e: KeyboardEvent) => {
 </template>
 
 <style scoped>
-
 .login-page {
   min-height: 100vh;
-  background: var(--bg);
-  color: var(--text);
+  background: #ffffff;
+  color: #222222;
   display: flex;
   flex-direction: column;
+  font-family: Circular, -apple-system, system-ui, Roboto, 'Helvetica Neue', sans-serif;
 }
 
-.main {
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 80px;
+  border-bottom: 1px solid #dddddd;
+  background: #ffffff;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: #ff385c;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.brand__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: #ff385c;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav__link {
+  color: #6a6a6a;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.nav__link:hover {
+  color: #222222;
+  background: #f7f7f7;
+}
+
+.main-center {
   flex: 1;
   display: flex;
   align-items: center;
@@ -256,11 +273,11 @@ const handleKeyPress = (e: KeyboardEvent) => {
 }
 
 .login-card {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 24px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+  border: 1px solid #dddddd;
+  border-radius: 14px;
+  background: #ffffff;
   padding: 40px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px 0, rgba(0,0,0,0.1) 0 4px 8px 0;
 }
 
 .login-header {
@@ -270,19 +287,16 @@ const handleKeyPress = (e: KeyboardEvent) => {
 
 .login-title {
   margin: 0 0 8px;
-  font-size: 32px;
-  font-weight: 900;
+  font-size: 28px;
+  font-weight: 700;
+  color: #222222;
   letter-spacing: -0.02em;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 1), rgba(34, 197, 94, 1));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
 }
 
 .login-subtitle {
   margin: 0;
   font-size: 16px;
-  color: var(--muted);
+  color: #6a6a6a;
 }
 
 .login-form {
@@ -291,10 +305,10 @@ const handleKeyPress = (e: KeyboardEvent) => {
 
 .error-message {
   padding: 12px 16px;
-  border-radius: 12px;
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #ef4444;
+  border-radius: 8px;
+  background: rgba(193, 53, 21, 0.08);
+  border: 1px solid rgba(193, 53, 21, 0.3);
+  color: #c13515;
   font-size: 14px;
   margin-bottom: 20px;
   text-align: center;
@@ -306,43 +320,43 @@ const handleKeyPress = (e: KeyboardEvent) => {
 
 .form-label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
+  font-weight: 500;
+  color: #6a6a6a;
 }
 
 .form-input {
   width: 100%;
-  height: 48px;
-  padding: 0 16px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text);
+  height: 56px;
+  padding: 14px 12px;
+  border: 1px solid #dddddd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #222222;
   font-size: 16px;
-  transition: border-color 200ms ease, background-color 200ms ease;
+  transition: border-color 120ms ease;
+  outline: none;
+  box-sizing: border-box;
 }
 
 .form-input:focus {
-  outline: none;
-  border-color: rgba(124, 58, 237, 0.5);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: #222222;
+  border-width: 2px;
 }
 
 .form-input::placeholder {
-  color: var(--muted-2);
+  color: #929292;
 }
 
 .form-input--error {
-  border-color: rgba(239, 68, 68, 0.5);
-  background: rgba(239, 68, 68, 0.05);
+  border-color: #c13515;
 }
 
 .form-error {
   margin: 6px 0 0;
   font-size: 12px;
-  color: #ef4444;
+  color: #c13515;
 }
 
 .form-options {
@@ -362,38 +376,54 @@ const handleKeyPress = (e: KeyboardEvent) => {
 .checkbox-input {
   width: 18px;
   height: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.06);
   cursor: pointer;
-  accent-color: rgba(124, 58, 237, 1);
+  accent-color: #222222;
 }
 
 .checkbox-text {
   font-size: 14px;
-  color: var(--muted);
+  color: #6a6a6a;
 }
 
 .forgot-link {
   font-size: 14px;
-  color: var(--muted);
-  text-decoration: none;
-  transition: color 200ms ease;
+  color: #6a6a6a;
+  text-decoration: underline;
+  transition: color 120ms ease;
 }
 
 .forgot-link:hover {
-  color: var(--text);
+  color: #222222;
 }
 
-.btn--full {
+.btn-submit {
   width: 100%;
+  height: 48px;
+  padding: 0 24px;
+  border-radius: 8px;
+  border: none;
+  background: #ff385c;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.btn-submit:hover:not(:disabled) {
+  background: #e00b41;
+}
+
+.btn-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .login-divider {
   display: flex;
   align-items: center;
   margin: 24px 0;
-  text-align: center;
 }
 
 .login-divider::before,
@@ -401,13 +431,13 @@ const handleKeyPress = (e: KeyboardEvent) => {
   content: '';
   flex: 1;
   height: 1px;
-  background: rgba(255, 255, 255, 0.1);
+  background: #ebebeb;
 }
 
 .login-divider span {
   padding: 0 16px;
   font-size: 14px;
-  color: var(--muted);
+  color: #6a6a6a;
 }
 
 .social-login {
@@ -417,44 +447,37 @@ const handleKeyPress = (e: KeyboardEvent) => {
   margin-bottom: 24px;
 }
 
-.btn--social {
+.btn-social {
   width: 100%;
   height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text);
+  border: 1px solid #dddddd;
+  border-radius: 8px;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 200ms ease;
+  transition: background-color 120ms ease;
 }
 
-.btn--social:hover {
-  background: rgba(255, 255, 255, 0.08);
-  transform: translateY(-1px);
+.btn-google {
+  background: #ffffff;
+  color: #222222;
 }
 
-.btn--google {
-  background: rgba(255, 255, 255, 0.95);
-  color: #333;
+.btn-google:hover {
+  background: #f7f7f7;
 }
 
-.btn--google:hover {
-  background: rgba(255, 255, 255, 1);
-}
-
-.btn--kakao {
+.btn-kakao {
   background: #FEE500;
   color: #3C1E1E;
   border-color: #FEE500;
 }
 
-.btn--kakao:hover {
+.btn-kakao:hover {
   background: #FDD835;
 }
 
@@ -465,19 +488,30 @@ const handleKeyPress = (e: KeyboardEvent) => {
 .signup-text {
   margin: 0;
   font-size: 14px;
-  color: var(--muted);
+  color: #6a6a6a;
 }
 
 .signup-link {
   margin-left: 4px;
-  color: rgba(124, 58, 237, 0.9);
+  color: #ff385c;
   text-decoration: none;
   font-weight: 600;
-  transition: color 200ms ease;
 }
 
 .signup-link:hover {
-  color: rgba(124, 58, 237, 1);
+  text-decoration: underline;
+}
+
+.page-footer {
+  border-top: 1px solid #dddddd;
+  padding: 18px 24px;
+  color: #6a6a6a;
+  background: #ffffff;
+}
+
+.footer__text {
+  margin: 0;
+  font-size: 13px;
 }
 
 @media (max-width: 720px) {
@@ -486,7 +520,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
   }
 
   .login-title {
-    font-size: 28px;
+    font-size: 24px;
   }
 }
 </style>

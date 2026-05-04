@@ -8,7 +8,7 @@
 const { color } = defineProps({
   color: {
     type: String,
-    default: 'orange'
+    default: '#ff385c'
   }
 })
 </script>
@@ -17,16 +17,12 @@ const { color } = defineProps({
 .alert {
   display: flex;
   align-items: center;
-  padding: 1rem;
-  border: 2px solid;
-  border-radius: 0.5rem;
-  background-color: #fff;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.alert:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+  padding: 12px 16px;
+  border: 1.5px solid;
+  border-radius: 8px;
+  background-color: #ffffff;
+  box-shadow: rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px 0;
+  font-size: 14px;
+  color: #222222;
 }
 </style>

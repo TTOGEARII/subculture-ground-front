@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// Nuxt composable 명시적 import (Docker 환경에서 안정적)
 import { useAuth } from '../../../composables/useAuth'
 
 definePageMeta({
@@ -19,40 +18,27 @@ const email = ref('')
 const password = ref('')
 const name = ref('')
 const phone = ref('')
-const phoneDisplay = ref('') // 화면에 표시할 포맷된 전화번호
+const phoneDisplay = ref('')
 const birthDate = ref('')
 
 const isLoading = ref(false)
 const errorMessage = ref('')
 
-// 전화번호 포맷팅 함수 (010-8447-4592 형식)
 const formatPhoneNumber = (value: string): string => {
-  // 숫자만 추출
   const numbers = value.replace(/\D/g, '')
-  
-  // 11자리 제한
   const limited = numbers.slice(0, 11)
-  
-  // 포맷팅
-  if (limited.length <= 3) {
-    return limited
-  } else if (limited.length <= 7) {
-    return `${limited.slice(0, 3)}-${limited.slice(3)}`
-  } else {
-    return `${limited.slice(0, 3)}-${limited.slice(3, 7)}-${limited.slice(7)}`
-  }
+  if (limited.length <= 3) return limited
+  else if (limited.length <= 7) return `${limited.slice(0, 3)}-${limited.slice(3)}`
+  else return `${limited.slice(0, 3)}-${limited.slice(3, 7)}-${limited.slice(7)}`
 }
 
-// 전화번호 입력 핸들러
 const handlePhoneInput = (event: Event) => {
   const target = event.target as HTMLInputElement
   const formatted = formatPhoneNumber(target.value)
   phoneDisplay.value = formatted
-  // 백엔드로 전송할 값은 하이픈 제거
   phone.value = formatted.replace(/\D/g, '')
 }
 
-// 전화번호 하이픈 제거 (백엔드 전송용)
 const getPhoneForSubmit = (): string | undefined => {
   const cleaned = phone.value.replace(/\D/g, '')
   return cleaned || undefined
@@ -93,18 +79,12 @@ const handleSubmit = async () => {
       phone: getPhoneForSubmit(),
       birthDate: birthDate.value || undefined,
     })
-
     await navigateTo('/')
   } catch (error: any) {
-    console.error('회원가입 에러:', error)
-    
-    // 네트워크 에러인 경우
     if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK' || !error.response) {
       errorMessage.value = '서버에 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요.'
       return
     }
-    
-    // 응답이 있는 경우
     const message =
       error?.response?.data?.message ||
       error?.response?.data?.error ||
@@ -132,7 +112,7 @@ const handleSubmit = async () => {
       </nav>
     </header>
 
-    <main class="main">
+    <main class="main-center">
       <div class="signup-container">
         <div class="signup-card">
           <div class="signup-header">
@@ -147,14 +127,7 @@ const handleSubmit = async () => {
 
             <div class="form-group">
               <label for="name" class="form-label">이름</label>
-              <input
-                id="name"
-                v-model="name"
-                type="text"
-                class="form-input"
-                placeholder="이름을 입력하세요"
-                autocomplete="name"
-              />
+              <input id="name" v-model="name" type="text" class="form-input" placeholder="이름을 입력하세요" autocomplete="name" />
             </div>
 
             <div class="form-group">
@@ -168,9 +141,7 @@ const handleSubmit = async () => {
                 placeholder="이메일을 입력하세요"
                 autocomplete="email"
               />
-              <p v-if="email && !isEmailValid" class="form-error">
-                올바른 이메일 형식이 아닙니다.
-              </p>
+              <p v-if="email && !isEmailValid" class="form-error">올바른 이메일 형식이 아닙니다.</p>
             </div>
 
             <div class="form-group">
@@ -184,9 +155,7 @@ const handleSubmit = async () => {
                 placeholder="비밀번호를 입력하세요"
                 autocomplete="new-password"
               />
-              <p v-if="password && !isPasswordValid" class="form-error">
-                비밀번호는 6자 이상이어야 합니다.
-              </p>
+              <p v-if="password && !isPasswordValid" class="form-error">비밀번호는 6자 이상이어야 합니다.</p>
             </div>
 
             <div class="form-group">
@@ -205,20 +174,10 @@ const handleSubmit = async () => {
 
             <div class="form-group">
               <label for="birthDate" class="form-label">생년월일 (선택)</label>
-              <input
-                id="birthDate"
-                v-model="birthDate"
-                type="date"
-                class="form-input"
-                autocomplete="bday"
-              />
+              <input id="birthDate" v-model="birthDate" type="date" class="form-input" autocomplete="bday" />
             </div>
 
-            <button
-              type="submit"
-              class="btn btn--primary btn--large btn--full"
-              :disabled="!canSubmit || isLoading"
-            >
+            <button type="submit" class="btn-submit" :disabled="!canSubmit || isLoading">
               <span v-if="isLoading">회원가입 중...</span>
               <span v-else>회원가입</span>
             </button>
@@ -234,7 +193,7 @@ const handleSubmit = async () => {
       </div>
     </main>
 
-    <footer class="footer">
+    <footer class="page-footer">
       <p class="footer__text">
         © {{ new Date().getFullYear() }} Subculture Ground. All rights reserved.
       </p>
@@ -243,16 +202,67 @@ const handleSubmit = async () => {
 </template>
 
 <style scoped>
-
 .signup-page {
   min-height: 100vh;
-  background: var(--bg);
-  color: var(--text);
+  background: #ffffff;
+  color: #222222;
   display: flex;
   flex-direction: column;
+  font-family: Circular, -apple-system, system-ui, Roboto, 'Helvetica Neue', sans-serif;
 }
 
-.main {
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 80px;
+  border-bottom: 1px solid #dddddd;
+  background: #ffffff;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: #ff385c;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.brand__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: #ff385c;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav__link {
+  color: #6a6a6a;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.nav__link:hover {
+  color: #222222;
+  background: #f7f7f7;
+}
+
+.main-center {
   flex: 1;
   display: flex;
   align-items: center;
@@ -266,11 +276,11 @@ const handleSubmit = async () => {
 }
 
 .signup-card {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 24px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+  border: 1px solid #dddddd;
+  border-radius: 14px;
+  background: #ffffff;
   padding: 40px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px 0, rgba(0,0,0,0.1) 0 4px 8px 0;
 }
 
 .signup-header {
@@ -280,19 +290,16 @@ const handleSubmit = async () => {
 
 .signup-title {
   margin: 0 0 8px;
-  font-size: 32px;
-  font-weight: 900;
+  font-size: 28px;
+  font-weight: 700;
+  color: #222222;
   letter-spacing: -0.02em;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 1), rgba(34, 197, 94, 1));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
 }
 
 .signup-subtitle {
   margin: 0;
   font-size: 16px;
-  color: var(--muted);
+  color: #6a6a6a;
 }
 
 .signup-form {
@@ -301,10 +308,10 @@ const handleSubmit = async () => {
 
 .error-message {
   padding: 12px 16px;
-  border-radius: 12px;
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #ef4444;
+  border-radius: 8px;
+  background: rgba(193, 53, 21, 0.08);
+  border: 1px solid rgba(193, 53, 21, 0.3);
+  color: #c13515;
   font-size: 14px;
   margin-bottom: 20px;
   text-align: center;
@@ -316,47 +323,66 @@ const handleSubmit = async () => {
 
 .form-label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
+  font-weight: 500;
+  color: #6a6a6a;
 }
 
 .form-input {
   width: 100%;
-  height: 48px;
-  padding: 0 16px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text);
+  height: 56px;
+  padding: 14px 12px;
+  border: 1px solid #dddddd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #222222;
   font-size: 16px;
-  transition: border-color 200ms ease, background-color 200ms ease;
+  transition: border-color 120ms ease;
+  outline: none;
+  box-sizing: border-box;
 }
 
 .form-input:focus {
-  outline: none;
-  border-color: rgba(124, 58, 237, 0.5);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: #222222;
+  border-width: 2px;
 }
 
 .form-input::placeholder {
-  color: var(--muted-2);
+  color: #929292;
 }
 
 .form-input--error {
-  border-color: rgba(239, 68, 68, 0.5);
-  background: rgba(239, 68, 68, 0.05);
+  border-color: #c13515;
 }
 
 .form-error {
   margin: 6px 0 0;
   font-size: 12px;
-  color: #ef4444;
+  color: #c13515;
 }
 
-.btn--full {
+.btn-submit {
   width: 100%;
+  height: 48px;
+  padding: 0 24px;
+  border-radius: 8px;
+  border: none;
+  background: #ff385c;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.btn-submit:hover:not(:disabled) {
+  background: #e00b41;
+}
+
+.btn-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .signup-footer {
@@ -366,19 +392,30 @@ const handleSubmit = async () => {
 .login-text {
   margin: 0;
   font-size: 14px;
-  color: var(--muted);
+  color: #6a6a6a;
 }
 
 .login-link {
   margin-left: 4px;
-  color: rgba(124, 58, 237, 0.9);
+  color: #ff385c;
   text-decoration: none;
   font-weight: 600;
-  transition: color 200ms ease;
 }
 
 .login-link:hover {
-  color: rgba(124, 58, 237, 1);
+  text-decoration: underline;
+}
+
+.page-footer {
+  border-top: 1px solid #dddddd;
+  padding: 18px 24px;
+  color: #6a6a6a;
+  background: #ffffff;
+}
+
+.footer__text {
+  margin: 0;
+  font-size: 13px;
 }
 
 @media (max-width: 720px) {
@@ -387,8 +424,7 @@ const handleSubmit = async () => {
   }
 
   .signup-title {
-    font-size: 28px;
+    font-size: 24px;
   }
 }
 </style>
-
