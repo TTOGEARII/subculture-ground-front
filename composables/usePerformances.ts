@@ -17,6 +17,12 @@ export interface Performance {
   name: string
   artist: string
   venue: string
+  /** 상세주소(도로명/지번) */
+  address?: string
+  /** 위도 */
+  lat?: number
+  /** 경도 */
+  lng?: number
   date: string
   time: string
   category: string[] // JSON 배열 형태 (예: ["록","jpop"])
@@ -36,6 +42,9 @@ interface ApiPerformanceRow {
   performanceName: string
   performanceArtist: string
   performanceVenue: string
+  performanceAddress?: string | null
+  performanceLat?: string | number | null
+  performanceLng?: string | number | null
   performanceDate: string | Date
   performanceTime: string
   performanceCategory: string[] // 백엔드에서 배열로 변환되어 반환됨
@@ -101,6 +110,9 @@ function mapApiPerformanceToPerformance(row: ApiPerformanceRow): Performance {
     name: row.performanceName,
     artist: row.performanceArtist,
     venue: row.performanceVenue,
+    address: row.performanceAddress ?? undefined,
+    lat: row.performanceLat != null ? Number(row.performanceLat) : undefined,
+    lng: row.performanceLng != null ? Number(row.performanceLng) : undefined,
     date: dateStr,
     time: row.performanceTime,
     category: parseCategory(row.performanceCategory), // 백엔드에서 배열로 변환되어 오지만 안전성을 위해 파싱
@@ -188,6 +200,9 @@ export const usePerformances = () => {
     performanceName: string
     performanceArtist: string
     performanceVenue: string
+    performanceAddress?: string | null
+    performanceLat?: number
+    performanceLng?: number
     performanceDate: string
     performanceTime: string
     performanceImage?: string | null
@@ -225,6 +240,9 @@ export const usePerformances = () => {
       performanceName: string
       performanceArtist: string
       performanceVenue: string
+      performanceAddress?: string | null
+      performanceLat?: number
+      performanceLng?: number
       performanceDate: string
       performanceTime: string
       performanceImage?: string | null

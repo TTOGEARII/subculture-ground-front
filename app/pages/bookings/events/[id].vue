@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { usePerformances, getStatusText, type Performance, type TicketInfo } from '../../../../composables/usePerformances'
 import { useAuth } from '../../../../composables/useAuth'
+import { useKakaoMap } from '../../../../composables/useKakaoMap'
 
 definePageMeta({ layout: 'bookings' })
 
@@ -10,6 +11,30 @@ const performanceId = computed(() => Number(route.params.id))
 
 const { getPerformanceById, getTicketsByPerformanceId } = usePerformances()
 const { isAuthenticated } = useAuth()
+const { loadSdk } = useKakaoMap()
+
+// 공연장 위치 지도
+const mapContainer = ref<HTMLElement | null>(null)
+const hasLocation = computed(
+  () =>
+    performance.value?.lat != null &&
+    performance.value?.lng != null &&
+    !Number.isNaN(performance.value.lat) &&
+    !Number.isNaN(performance.value.lng),
+)
+
+const renderVenueMap = async () => {
+  if (!hasLocation.value || !mapContainer.value || !performance.value) return
+  try {
+    const kakao = await loadSdk()
+    const position = new kakao.maps.LatLng(performance.value.lat, performance.value.lng)
+    const map = new kakao.maps.Map(mapContainer.value, { center: position, level: 3 })
+    const marker = new kakao.maps.Marker({ position })
+    marker.setMap(map)
+  } catch (err) {
+    console.error('공연장 지도 렌더링 실패:', err)
+  }
+}
 
 const performance = ref<Performance | null>(null)
 const tickets = ref<TicketInfo[]>([])
@@ -40,11 +65,25 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+
+  // 콘텐츠(지도 div)는 loading 해제 후 렌더되므로 이 시점에 지도를 그린다
+  if (hasLocation.value) {
+    await nextTick()
+    await renderVenueMap()
+  }
 })
 
 useSeoMeta({
   title: computed(() => performance.value ? `${performance.value.name} - Subculture Ground` : '공연 상세'),
   description: computed(() => performance.value?.description || ''),
+})
+
+// 탭 전환으로 지도 DOM이 사라졌다가 다시 생기면 재렌더링
+watch(activeTab, async (tab) => {
+  if (tab === 'detail' && hasLocation.value) {
+    await nextTick()
+    await renderVenueMap()
+  }
 })
 
 const formatDate = (dateString: string) => {
@@ -196,6 +235,16 @@ const confirmBooking = () => {
                 <span class="info-key">장소</span>
                 <span class="info-val">{{ performance.venue }}</span>
               </div>
+              <div v-if="performance.address" class="info-row">
+                <span class="info-key">주소</span>
+                <span class="info-val">{{ performance.address }}</span>
+              </div>
+            </div>
+
+            <!-- 공연장 위치 지도 -->
+            <div v-if="hasLocation" class="map-block">
+              <h2 class="block-title">오시는 길</h2>
+              <div ref="mapContainer" class="venue-map"></div>
             </div>
 
             <!-- 공연 소개 -->
@@ -525,6 +574,18 @@ const confirmBooking = () => {
   font-size: 17px;
   font-weight: 600;
   color: #222222;
+}
+
+.map-block {
+  margin-bottom: 24px;
+}
+
+.venue-map {
+  width: 100%;
+  height: 320px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
 }
 
 .desc-block {
