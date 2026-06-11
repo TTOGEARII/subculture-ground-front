@@ -15,7 +15,7 @@ const ticketIdxParam = computed(() => Number(route.query.ticketIdx) || null)
 const ticketCount = computed(() => Math.max(1, Math.min(10, Number(route.query.count) || 1)))
 
 const { getPerformanceById, getTicketsByPerformanceId } = usePerformances()
-const { isAuthenticated, user } = useAuth()
+const { isAuthenticated, user, fetchProfile } = useAuth()
 const apiClient = useApi()
 
 const performance = ref<Performance | null>(null)
@@ -35,6 +35,8 @@ onMounted(async () => {
     await navigateTo(`/auth/login?redirect=${encodeURIComponent(route.fullPath)}`)
     return
   }
+  // 예매 확정에 user.idx가 필요하므로 프로필을 보장한다
+  if (!user.value) await fetchProfile()
 
   loading.value = true
   error.value = null
