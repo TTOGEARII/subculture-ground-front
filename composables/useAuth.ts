@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { computed } from 'vue'
 import { useApi, useEncrypt } from './useUtil'
 
