@@ -158,31 +158,6 @@ const formatPhone = (phone: string | null | undefined) => {
         </div>
       </div>
 
-      <!-- 가장 최근 주문 -->
-      <div class="recent-order-section">
-        <div class="recent-order-card">
-          <div class="order-header">
-            <p class="order-label">가장 최근에 생성한 주문이에요.</p>
-          </div>
-          <div class="order-content">
-            <div class="order-poster">
-              <div class="poster-placeholder">
-                <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect width="60" height="60" rx="8" fill="rgba(124, 58, 237, 0.2)"/>
-                  <path d="M30 20v20M20 30h20" stroke="rgba(124, 58, 237, 0.6)" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-              </div>
-            </div>
-            <div class="order-details">
-              <span class="order-status">지난공연</span>
-              <h3 class="order-title">&lt;HOMMAGE&gt;</h3>
-              <p class="order-date">2026년 02월 08일 (일) 17:00</p>
-              <p class="order-info">&lt;오마주&gt;에서 온 티켓 1매 | 주문번호 R1046644</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- 바로가기 -->
       <div class="shortcuts-section">
         <h2 class="shortcuts-title">바로가기</h2>
@@ -449,84 +424,6 @@ const formatPhone = (phone: string | null | undefined) => {
 .my-event-arrow {
   flex-shrink: 0;
   color: #c4c4c4;
-}
-
-.recent-order-section {
-  padding: 20px;
-  background: #f9fafb;
-}
-
-.recent-order-card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.order-header {
-  margin-bottom: 12px;
-}
-
-.order-label {
-  margin: 0;
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.order-content {
-  display: flex;
-  gap: 12px;
-}
-
-.order-poster {
-  flex-shrink: 0;
-}
-
-.poster-placeholder {
-  width: 80px;
-  height: 80px;
-  border-radius: 8px;
-  background: #f3f4f6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.order-details {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.order-status {
-  display: inline-block;
-  padding: 4px 8px;
-  background: #f3f4f6;
-  border-radius: 4px;
-  font-size: 11px;
-  color: #6b7280;
-  width: fit-content;
-}
-
-.order-title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: #111827;
-}
-
-.order-date {
-  margin: 0;
-  font-size: 13px;
-  color: #6b7280;
-}
-
-.order-info {
-  margin: 0;
-  font-size: 12px;
-  color: #9ca3af;
 }
 
 .shortcuts-section {
