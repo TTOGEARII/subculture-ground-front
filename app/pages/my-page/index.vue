@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { useAuth } from '../../../composables/useAuth'
+import { usePerformances, getStatusText } from '../../../composables/usePerformances'
 
 definePageMeta({
   layout: 'bookings',
 })
 
 const { user, isAuthenticated, fetchProfile, logout } = useAuth()
+const { performances, loadMyPerformances, loading: loadingPerformances } = usePerformances()
 
 onMounted(async () => {
   if (!isAuthenticated.value) {
@@ -16,7 +18,30 @@ onMounted(async () => {
   if (!user.value) {
     await fetchProfile()
   }
+
+  // 내가 등록한 공연 목록 로드
+  await loadMyPerformances()
 })
+
+const config = useRuntimeConfig()
+
+// 이미지 URL 변환 (상대경로 → 절대경로)
+const getImageSrc = (image?: string) => {
+  if (!image) return null
+  if (image.startsWith('http')) return image
+  return `${config.public.apiBase}${image}`
+}
+
+// 공연 날짜 포맷팅 (2026.09.20 (일))
+const formatEventDate = (dateString: string) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const weekday = ['일', '월', '화', '수', '목', '금', '토'][date.getDay()]
+  return `${year}.${month}.${day} (${weekday})`
+}
 
 useSeoMeta({
   title: '마이페이지 - Subculture Ground',
@@ -45,7 +70,7 @@ const getInitials = computed(() => {
 })
 
 // 전화번호 포맷팅
-const formatPhone = (phone: string | null) => {
+const formatPhone = (phone: string | null | undefined) => {
   if (!phone) return ''
   return phone.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3')
 }
@@ -70,6 +95,66 @@ const formatPhone = (phone: string | null) => {
             <h1 class="profile-name">{{ user?.name || '사용자' }}</h1>
             <p class="profile-phone">{{ formatPhone(user?.phone) || '전화번호 없음' }}</p>
           </div>
+        </div>
+      </div>
+
+      <!-- 내가 등록한 공연 -->
+      <div class="my-events-section">
+        <div class="my-events-head">
+          <h2 class="section-title">내가 등록한 공연</h2>
+          <NuxtLink to="/performance-management/create" class="my-events-add">
+            + 새 공연 등록
+          </NuxtLink>
+        </div>
+
+        <div v-if="loadingPerformances" class="my-events-empty">
+          공연 목록을 불러오는 중...
+        </div>
+
+        <div v-else-if="performances.length === 0" class="my-events-empty">
+          아직 등록한 공연이 없어요.
+          <NuxtLink to="/performance-management/create" class="my-events-empty-link">
+            첫 공연을 등록해보세요 →
+          </NuxtLink>
+        </div>
+
+        <div v-else class="my-events-list">
+          <NuxtLink
+            v-for="event in performances"
+            :key="event.id"
+            :to="`/performance-management?id=${event.id}`"
+            class="my-event-card"
+          >
+            <div class="my-event-poster">
+              <img
+                v-if="getImageSrc(event.image)"
+                :src="getImageSrc(event.image) || undefined"
+                :alt="event.name"
+              />
+              <div v-else class="my-event-poster--empty">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M3 16l5-5 4 4 3-3 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+
+            <div class="my-event-info">
+              <span
+                class="my-event-status"
+                :class="event.status === 1 ? 'is-open' : 'is-closed'"
+              >
+                {{ getStatusText(event.status) }}
+              </span>
+              <h3 class="my-event-name">{{ event.name }}</h3>
+              <p class="my-event-meta">{{ formatEventDate(event.date) }} {{ event.time }}</p>
+              <p class="my-event-venue">{{ event.venue }}</p>
+            </div>
+
+            <svg class="my-event-arrow" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M7 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </NuxtLink>
         </div>
       </div>
 
@@ -208,6 +293,162 @@ const formatPhone = (phone: string | null) => {
   margin: 0;
   font-size: 14px;
   color: #6b7280;
+}
+
+/* 내가 등록한 공연 */
+.my-events-section {
+  padding: 20px;
+  background: #ffffff;
+}
+
+.my-events-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.my-events-add {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ff385c;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.my-events-add:hover {
+  text-decoration: underline;
+}
+
+.my-events-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 20px;
+  background: #f9fafb;
+  border: 1px dashed #e5e7eb;
+  border-radius: 12px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.my-events-empty-link {
+  color: #ff385c;
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.my-events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.my-event-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  text-decoration: none;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.my-event-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.my-event-poster {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f3f4f6;
+}
+
+.my-event-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.my-event-poster--empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c4c4c4;
+}
+
+.my-event-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.my-event-status {
+  display: inline-block;
+  width: fit-content;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.my-event-status.is-open {
+  background: #fde8ec;
+  color: #ff385c;
+}
+
+.my-event-status.is-closed {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.my-event-name {
+  margin: 2px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-event-meta {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.my-event-venue {
+  margin: 0;
+  font-size: 12px;
+  color: #9ca3af;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-event-arrow {
+  flex-shrink: 0;
+  color: #c4c4c4;
 }
 
 .recent-order-section {
