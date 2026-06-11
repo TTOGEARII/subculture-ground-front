@@ -1,4 +1,3 @@
-// @ts-nocheck
 import axios, { AxiosError } from 'axios'
 import type { AxiosInstance } from 'axios'
 import { computed } from 'vue'
