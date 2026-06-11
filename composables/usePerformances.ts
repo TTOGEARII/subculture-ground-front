@@ -1,5 +1,20 @@
 import { useApi, useEncrypt } from './useUtil'
 
+/** 예매자 관리용 예매 내역 (구매자/티켓 조인) */
+export interface Reservation {
+  idx: number
+  ticketName: string | null
+  ticketType: number
+  ticketCnt: number
+  ticketTotalPrice: number
+  ticketStatus: 0 | 1 | 2 | 3 // 0 대기 / 1 결제완료 / 2 체크완료 / 3 취소
+  ticketChkDt: string | null
+  createDt: string | null
+  buyerName: string | null
+  buyerEmail: string | null
+  buyerPhone: string | null
+}
+
 export interface TicketInfo {
   idx: number
   pmIdx: number
@@ -315,6 +330,26 @@ export const usePerformances = () => {
   }
 
   /**
+   * 공연별 예매자 목록 조회 (호스트, 구매자/티켓 정보 조인)
+   */
+  async function getReservations(pmIdx: number): Promise<Reservation[]> {
+    const { data } = await apiClient.get<Reservation[]>(
+      `/ticket-user/reservations?pmIdx=${pmIdx}`,
+    )
+    return data
+  }
+
+  /**
+   * 예매 상태 변경 (1 결제완료/승인, 2 체크완료, 3 취소)
+   */
+  async function changeReservationStatus(
+    idx: number,
+    status: 0 | 1 | 2 | 3,
+  ): Promise<void> {
+    await apiClient.put(`/ticket-user/${idx}/status`, { status })
+  }
+
+  /**
    * 공연 삭제
    */
   async function deletePerformance(id: number): Promise<void> {
@@ -348,6 +383,8 @@ export const usePerformances = () => {
     getTicketsByPerformanceId,
     createTicketInfo,
     deleteTicketInfo,
+    getReservations,
+    changeReservationStatus,
     createPerformance,
     updatePerformance,
     deletePerformance,
