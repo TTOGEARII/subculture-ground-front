@@ -8,10 +8,6 @@ export default defineNuxtConfig({
     port: 3000,
     host: '0.0.0.0',
   },
-  nitro: {
-    port: 3000,
-    host: '0.0.0.0',
-  },
   alias: {
     '~': '.',
     '@': '.',
@@ -34,6 +30,10 @@ export default defineNuxtConfig({
       encryptionKey:
         process.env.NUXT_PUBLIC_ENCRYPTION_KEY ||
         'subculture-ground-encryption-key-2024',
+      // 카카오맵 JavaScript 키 (주소 검색 / 지도)
+      kakaoJsKey:
+        process.env.NUXT_PUBLIC_KAKAO_JS_KEY ||
+        '9183a6792760b7c71d5f99de1a5ab1b9',
     },
   },
 })
