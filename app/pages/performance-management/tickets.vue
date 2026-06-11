@@ -24,9 +24,9 @@ const performance = ref<Performance | null>(null)
 const tickets = ref<TicketInfo[]>([])
 const loading = ref(true)
 
-// 티켓 종류: 0=두둥티켓(유료/계좌송금), 1=무료티켓, 2=유료티켓(제휴 호스트 전용)
+// 티켓 종류: 0=계좌송금 티켓(유료), 1=무료티켓, 2=유료티켓(제휴 호스트 전용)
 const ticketTypes = [
-  { value: 0, label: '두둥티켓', desc: '계좌송금으로 티켓값을 받아요' },
+  { value: 0, label: '계좌송금 티켓', desc: '계좌송금으로 티켓값을 받아요' },
   { value: 1, label: '무료티켓', desc: '무료로 발급하는 티켓이에요' },
   { value: 2, label: '유료티켓', desc: '제휴 호스트 전용', disabled: true },
 ]

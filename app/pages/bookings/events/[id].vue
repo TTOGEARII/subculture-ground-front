@@ -111,7 +111,7 @@ const getImageSrc = (image?: string) => {
 const getRemainingCount = (ticket: TicketInfo) => ticket.ticketMax - ticket.ticketCount
 
 const getTicketTypeName = (type: number) => {
-  const types: Record<number, string> = { 0: '두둥티켓', 1: '무료티켓', 2: '후원티켓' }
+  const types: Record<number, string> = { 0: '계좌송금 티켓', 1: '무료티켓', 2: '후원티켓' }
   return types[type] ?? '일반티켓'
 }
 

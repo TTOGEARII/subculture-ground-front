@@ -89,7 +89,7 @@ const handleChange = async (r: Reservation, status: 0 | 1 | 2 | 3, confirmMsg?: 
 }
 
 const typeName = (type: number) =>
-  ({ 0: '두둥티켓', 1: '무료티켓', 2: '유료티켓' } as Record<number, string>)[type] ?? '티켓'
+  ({ 0: '계좌송금 티켓', 1: '무료티켓', 2: '유료티켓' } as Record<number, string>)[type] ?? '티켓'
 const formatPrice = (price: number) =>
   price === 0 ? '무료' : new Intl.NumberFormat('ko-KR').format(price) + '원'
 const formatDateTime = (v: string | null) => {
