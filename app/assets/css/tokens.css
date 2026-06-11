@@ -1,0 +1,44 @@
+/* 디자인 토큰 — 라이트 테마 (폼/관리 화면 공통)
+ * 하드코딩된 색·반경·그림자를 한 곳에서 관리한다. 값 변경은 여기서. */
+:root {
+  /* 브랜드 / 강조 */
+  --color-primary: #7c3aed;
+  --color-primary-hover: #6d28d9;
+  --color-primary-tint: #f5f3ff;
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+
+  /* 텍스트 */
+  --color-text: #111827;
+  --color-text-body: #374151;
+  --color-text-muted: #6b7280;
+  --color-text-faint: #9ca3af;
+
+  /* 표면 / 경계 */
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f9fafb;
+  --color-surface-muted: #f3f4f6;
+  --color-page-bg: #f5f5f5;
+  --color-border: #e5e7eb;
+  --color-border-strong: #d1d5db;
+
+  /* 피드백 */
+  --color-danger: #ef4444;
+  --color-danger-strong: #dc2626;
+  --color-error-bg: #fee2e2;
+  --color-error-border: #fecaca;
+  --color-error-text: #991b1b;
+  --color-success-bg: #d1fae5;
+  --color-success-border: #a7f3d0;
+  --color-success-text: #065f46;
+
+  /* 반경 */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 20px;
+
+  /* 그림자 / 포커스 */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --focus-ring: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
