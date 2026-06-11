@@ -1,3 +1,7 @@
+/* 디자인 토큰 + 공유 컴포넌트 */
+@import './tokens.css';
+@import './components.css';
+
 /* === Airbnb Design System ===
    Primary (Rausch): #ff385c  |  Canvas: #ffffff  |  Ink: #222222
 */

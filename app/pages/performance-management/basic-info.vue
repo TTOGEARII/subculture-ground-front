@@ -2,6 +2,7 @@
 import { useAuth } from '../../../composables/useAuth'
 import { usePerformances } from '../../../composables/usePerformances'
 import { useApi } from '../../../composables/useUtil'
+import { useKakaoMap, type KakaoPlace } from '../../../composables/useKakaoMap'
 
 definePageMeta({
   layout: 'performance-management',
@@ -9,6 +10,7 @@ definePageMeta({
 
 const { isAuthenticated, user, fetchProfile } = useAuth()
 const { createPerformance, updatePerformance, getPerformanceById } = usePerformances()
+const { loadSdk, searchPlaces } = useKakaoMap()
 
 const route = useRoute()
 const performanceId = computed(() => {
@@ -76,8 +78,8 @@ const formatTimeForInput = (time: string | null): string => {
   if (!time) return ''
   // "01:30 AM" 형식을 "01:30" 형식으로 변환
   if (time.includes('AM') || time.includes('PM')) {
-    const [timePart, period] = time.split(' ')
-    const [hours, minutes] = timePart.split(':')
+    const [timePart = '', period] = time.split(' ')
+    const [hours = '00', minutes = '00'] = timePart.split(':')
     let hour24 = Number(hours)
     if (period === 'PM' && hour24 !== 12) hour24 += 12
     if (period === 'AM' && hour24 === 12) hour24 = 0
@@ -134,7 +136,20 @@ onMounted(async () => {
         if (performance.description) {
           formData.value.performanceDescription = performance.description
         }
-        // runningTime과 detailedAddress는 Performance 엔티티에 없으므로 별도 처리 필요
+        // 상세주소 / 좌표 로드 → 기존 위치 지도 표시
+        if (performance.address) {
+          formData.value.detailedAddress = performance.address
+        }
+        if (performance.lat != null && performance.lng != null) {
+          selectedPlace.value = {
+            name: performance.venue,
+            address: performance.address || '',
+            lat: performance.lat,
+            lng: performance.lng,
+          }
+          await nextTick()
+          await renderMap()
+        }
       }
     } catch (error) {
       console.error('공연 정보 로드 실패:', error)
@@ -202,6 +217,9 @@ const handleSubmit = async () => {
       performanceName: formData.value.performanceName.trim(),
       performanceArtist: formData.value.performanceArtist.trim(),
       performanceVenue: formData.value.performanceVenue.trim(),
+      performanceAddress: formData.value.detailedAddress.trim() || null,
+      performanceLat: selectedPlace.value?.lat,
+      performanceLng: selectedPlace.value?.lng,
       performanceDate: formData.value.performanceDate,
       performanceTime: formatTimeForDisplay(formData.value.performanceTime),
       performanceCategory: JSON.stringify(formData.value.performanceCategory),
@@ -233,9 +251,77 @@ const handleResetRunningTime = () => {
   formData.value.runningTime = ''
 }
 
+// ===== 공연장 주소 검색 (카카오맵) =====
+const showAddressModal = ref(false)
+const addressKeyword = ref('')
+const addressResults = ref<KakaoPlace[]>([])
+const isSearchingAddress = ref(false)
+const addressSearchError = ref('')
+const hasSearchedAddress = ref(false)
+
+// 지도
+const mapContainer = ref<HTMLElement | null>(null)
+const selectedPlace = ref<{ name: string; address: string; lat: number; lng: number } | null>(null)
+let kakaoMap: any = null
+let kakaoMarker: any = null
+
 const handleFindAddress = () => {
-  // TODO: 카카오 주소 검색 API 연동
-  alert('주소 찾기 기능은 준비 중입니다.')
+  addressKeyword.value = formData.value.performanceVenue || ''
+  addressResults.value = []
+  hasSearchedAddress.value = false
+  addressSearchError.value = ''
+  showAddressModal.value = true
+}
+
+const handleSearchPlaces = async () => {
+  const keyword = addressKeyword.value.trim()
+  if (!keyword) {
+    addressSearchError.value = '공연장 이름을 입력해주세요.'
+    return
+  }
+  isSearchingAddress.value = true
+  addressSearchError.value = ''
+  try {
+    addressResults.value = await searchPlaces(keyword)
+    hasSearchedAddress.value = true
+  } catch (error: any) {
+    addressSearchError.value = error?.message || '검색 중 오류가 발생했습니다.'
+  } finally {
+    isSearchingAddress.value = false
+  }
+}
+
+const handleSelectPlace = async (place: KakaoPlace) => {
+  formData.value.performanceVenue = place.place_name
+  formData.value.detailedAddress = place.road_address_name || place.address_name
+  selectedPlace.value = {
+    name: place.place_name,
+    address: place.road_address_name || place.address_name,
+    lat: Number(place.y),
+    lng: Number(place.x),
+  }
+  showAddressModal.value = false
+  await nextTick()
+  await renderMap()
+}
+
+const renderMap = async () => {
+  if (!selectedPlace.value || !mapContainer.value) return
+  try {
+    const kakao = await loadSdk()
+    const position = new kakao.maps.LatLng(selectedPlace.value.lat, selectedPlace.value.lng)
+    if (!kakaoMap) {
+      kakaoMap = new kakao.maps.Map(mapContainer.value, { center: position, level: 3 })
+      kakaoMarker = new kakao.maps.Marker({ position })
+      kakaoMarker.setMap(kakaoMap)
+    } else {
+      kakaoMap.relayout()
+      kakaoMap.setCenter(position)
+      kakaoMarker.setPosition(position)
+    }
+  } catch (error) {
+    console.error('지도 렌더링 실패:', error)
+  }
 }
 
 // 파일 선택 핸들러
@@ -538,9 +624,10 @@ const toggleCategory = (category: string) => {
               />
             </div>
 
-            <!-- 지도 영역 (플레이스홀더) -->
+            <!-- 지도 영역 -->
             <div class="map-container">
-              <div class="map-placeholder">
+              <div v-show="selectedPlace" ref="mapContainer" class="map-view"></div>
+              <div v-if="!selectedPlace" class="map-placeholder">
                 <svg
                   width="40"
                   height="40"
@@ -556,8 +643,7 @@ const toggleCategory = (category: string) => {
                     stroke-linejoin="round"
                   />
                 </svg>
-                <p>지도 영역</p>
-                <p class="map-scale">100m</p>
+                <p>주소를 찾으면 지도가 표시됩니다</p>
               </div>
             </div>
           </div>
@@ -754,13 +840,69 @@ const toggleCategory = (category: string) => {
         </div>
       </form>
     </div>
+
+    <!-- 공연장 주소 검색 모달 -->
+    <Modal
+      :is-open="showAddressModal"
+      title="공연장 주소 찾기"
+      size="large"
+      @close="showAddressModal = false"
+    >
+      <div class="address-search">
+        <div class="address-search__bar">
+          <input
+            v-model="addressKeyword"
+            type="text"
+            class="form-input"
+            placeholder="공연장 이름을 검색해주세요 (예: 올림픽홀, KSPO DOME)"
+            @keyup.enter="handleSearchPlaces"
+          />
+          <button
+            type="button"
+            class="btn btn--search"
+            :disabled="isSearchingAddress"
+            @click="handleSearchPlaces"
+          >
+            {{ isSearchingAddress ? '검색 중...' : '검색' }}
+          </button>
+        </div>
+
+        <p v-if="addressSearchError" class="address-search__error">
+          {{ addressSearchError }}
+        </p>
+
+        <ul v-if="addressResults.length" class="address-results">
+          <li
+            v-for="place in addressResults"
+            :key="place.id"
+            class="address-result"
+            @click="handleSelectPlace(place)"
+          >
+            <div class="address-result__name">{{ place.place_name }}</div>
+            <div class="address-result__addr">
+              {{ place.road_address_name || place.address_name }}
+            </div>
+            <div v-if="place.category_name" class="address-result__cat">
+              {{ place.category_name }}
+            </div>
+          </li>
+        </ul>
+
+        <p
+          v-else-if="hasSearchedAddress && !isSearchingAddress"
+          class="address-search__empty"
+        >
+          검색 결과가 없습니다. 다른 키워드로 검색해보세요.
+        </p>
+      </div>
+    </Modal>
   </div>
 </template>
 
 <style scoped>
 .basic-info-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--color-page-bg);
 }
 
 .content-header {
@@ -772,54 +914,35 @@ const toggleCategory = (category: string) => {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #7c3aed;
+  color: var(--color-primary);
   margin-bottom: 16px;
 }
 
 .separator {
-  color: #9ca3af;
+  color: var(--color-text-faint);
 }
 
 .page-title {
   font-size: 28px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text);
   margin-bottom: 8px;
 }
 
 .page-subtitle {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .content-body {
-  background: #ffffff;
-  border-radius: 12px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
   padding: 40px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .form {
   width: 100%;
-}
-
-.alert {
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-bottom: 24px;
-  font-size: 14px;
-}
-
-.alert--error {
-  background: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
-}
-
-.alert--success {
-  background: #d1fae5;
-  color: #065f46;
-  border: 1px solid #a7f3d0;
 }
 
 .form-grid {
@@ -830,111 +953,15 @@ const toggleCategory = (category: string) => {
   align-items: start;
 }
 
-.form-column {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  align-items: stretch;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.form-group .form-label {
-  margin-bottom: 0;
-}
-
 .form-group--full {
   grid-column: 1 / -1;
   margin-top: 24px;
-}
-
-.form-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #111827;
-}
-
-.form-label-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 8px;
-  gap: 12px;
-}
-
-.form-label-row .form-label {
-  margin: 0;
-  flex: 1;
 }
 
 .form-label-row .btn--find-address {
   flex-shrink: 0;
   align-self: flex-start;
   margin-top: 0;
-}
-
-.required {
-  color: #ef4444;
-}
-
-.form-hint {
-  font-size: 12px;
-  color: #ef4444;
-  font-weight: 500;
-  margin-top: 4px;
-  margin-bottom: 0;
-}
-
-.form-hint--normal {
-  color: #6b7280;
-  font-weight: 400;
-}
-
-.form-input {
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 14px;
-  color: #111827;
-  background: #ffffff;
-  transition: border-color 0.2s;
-  box-sizing: border-box;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
-}
-
-.date-time-group {
-  display: flex;
-  gap: 12px;
-}
-
-.date-input-wrapper,
-.time-input-wrapper {
-  position: relative;
-  flex: 1;
-}
-
-.form-input--date,
-.form-input--time {
-  padding-right: 40px;
-}
-
-.input-icon {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #6b7280;
-  pointer-events: none;
 }
 
 .running-time-group {
@@ -947,266 +974,21 @@ const toggleCategory = (category: string) => {
   flex: 1;
 }
 
-.btn {
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-}
-
-.btn--find-address {
-  background: #7c3aed;
-  color: #ffffff;
-  padding: 8px 16px;
-  white-space: nowrap;
-  height: fit-content;
-}
-
-.btn--find-address:hover {
-  background: #6d28d9;
-}
-
 .btn--reset {
-  background: #ef4444;
+  background: var(--color-danger);
   color: #ffffff;
   padding: 8px 16px;
 }
 
 .btn--reset:hover {
-  background: #dc2626;
-}
-
-.btn--primary {
-  background: #7c3aed;
-  color: #ffffff;
-}
-
-.btn--primary:hover:not(:disabled) {
-  background: #6d28d9;
-}
-
-.btn--primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn--secondary {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-.btn--secondary:hover {
-  background: #e5e7eb;
-}
-
-.map-container {
-  width: 100%;
-  height: 400px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #f9fafb;
-  position: relative;
-}
-
-.map-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: #9ca3af;
-  position: relative;
-}
-
-.map-placeholder p {
-  margin: 0;
-  font-size: 14px;
-}
-
-.map-scale {
-  position: absolute;
-  bottom: 12px;
-  left: 12px;
-  font-size: 12px;
-  color: #6b7280;
-  background: rgba(255, 255, 255, 0.8);
-  padding: 4px 8px;
-  border-radius: 4px;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding-top: 24px;
-  border-top: 1px solid #e5e7eb;
-}
-
-.category-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.category-tag {
-  padding: 8px 16px;
-  border: 1px solid #d1d5db;
-  border-radius: 20px;
-  background: #ffffff;
-  color: #374151;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.category-tag:hover {
-  border-color: #7c3aed;
-  color: #7c3aed;
-  background: #f5f3ff;
-}
-
-.category-tag--active {
-  border-color: #7c3aed;
-  background: #7c3aed;
-  color: #ffffff;
-}
-
-.category-tag--active:hover {
-  background: #6d28d9;
-  border-color: #6d28d9;
-}
-
-.upload-guidelines {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 8px;
-}
-
-.guideline {
-  font-size: 12px;
-}
-
-.guideline--red {
-  color: #ef4444;
-}
-
-.upload-area {
-  width: 100%;
-  min-height: 400px;
-  border: 2px dashed #7c3aed;
-  border-radius: 12px;
-  background: #f9fafb;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
-  overflow: hidden;
-}
-
-.upload-area:hover {
-  border-color: #6d28d9;
-  background: #f3f4f6;
-}
-
-.upload-area--has-image {
-  border-style: solid;
-  border-color: #d1d5db;
-  background: #ffffff;
-}
-
-.file-input {
-  display: none;
-}
-
-.upload-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 40px;
-}
-
-.upload-text {
-  font-size: 14px;
-  color: #6b7280;
-  text-align: center;
-  max-width: 300px;
-}
-
-.upload-preview {
-  width: 100%;
-  height: 100%;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-}
-
-.preview-image {
-  max-width: 100%;
-  max-height: 600px;
-  object-fit: contain;
-  border-radius: 8px;
-}
-
-.remove-image-btn {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.6);
-  color: #ffffff;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
-}
-
-.remove-image-btn:hover {
-  background: rgba(0, 0, 0, 0.8);
-}
-
-.form-textarea {
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 14px;
-  color: #111827;
-  background: #ffffff;
-  font-family: inherit;
-  resize: vertical;
-  transition: border-color 0.2s;
-  box-sizing: border-box;
-}
-
-.form-textarea:focus {
-  outline: none;
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+  background: var(--color-danger-strong);
 }
 
 /* 체크리스트 섹션 */
 .checklist-section {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
   padding: 24px;
   margin-top: 32px;
   margin-bottom: 24px;
@@ -1216,13 +998,13 @@ const toggleCategory = (category: string) => {
   margin: 0 0 8px;
   font-size: 18px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .section-description {
   margin: 0 0 20px;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .checklist-items {
@@ -1236,14 +1018,14 @@ const toggleCategory = (category: string) => {
   align-items: center;
   gap: 12px;
   font-size: 14px;
-  color: #374151;
+  color: var(--color-text-body);
 }
 
 /* 유의사항 섹션 */
 .notes-section {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
   padding: 24px;
   margin-bottom: 32px;
 }
@@ -1252,7 +1034,7 @@ const toggleCategory = (category: string) => {
   margin: 0 0 16px;
   font-size: 18px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .notes-content {
@@ -1260,7 +1042,7 @@ const toggleCategory = (category: string) => {
   flex-direction: column;
   gap: 12px;
   font-size: 14px;
-  color: #374151;
+  color: var(--color-text-body);
   line-height: 1.6;
 }
 
@@ -1271,14 +1053,22 @@ const toggleCategory = (category: string) => {
 .notes-subsection {
   margin-top: 8px;
   padding-top: 16px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-border);
 }
 
 .subsection-title {
   margin: 0 0 12px;
   font-size: 16px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-border);
 }
 
 @media (max-width: 1024px) {
@@ -1286,7 +1076,7 @@ const toggleCategory = (category: string) => {
     grid-template-columns: 1fr;
     gap: 24px;
   }
-  
+
   .form-group--full {
     grid-column: 1;
   }
