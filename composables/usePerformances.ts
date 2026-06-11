@@ -289,6 +289,32 @@ export const usePerformances = () => {
   }
 
   /**
+   * 티켓 생성 (공연 관리 > 티켓 관리)
+   * ticket-info는 평문 엔드포인트. JWT는 apiClient가 자동 첨부.
+   */
+  async function createTicketInfo(payload: {
+    pmIdx: number
+    ticketName: string
+    ticketType: number
+    ticketPrice: number
+    ticketMax: number
+    ticketMin: number
+  }): Promise<TicketInfo> {
+    const { data } = await apiClient.post<TicketInfo>('/ticket-info', {
+      ...payload,
+      ticketCount: 0, // 판매 수량 초기값
+    })
+    return data
+  }
+
+  /**
+   * 티켓 삭제 (soft delete). 이미 예매된 티켓(ticketCount>0)은 서버/UI에서 막는다.
+   */
+  async function deleteTicketInfo(idx: number): Promise<void> {
+    await apiClient.delete(`/ticket-info/${idx}`)
+  }
+
+  /**
    * 공연 삭제
    */
   async function deletePerformance(id: number): Promise<void> {
@@ -320,6 +346,8 @@ export const usePerformances = () => {
     refreshPerformances,
     getPerformanceById,
     getTicketsByPerformanceId,
+    createTicketInfo,
+    deleteTicketInfo,
     createPerformance,
     updatePerformance,
     deletePerformance,
