@@ -111,10 +111,10 @@ useSeoMeta({
 
           <article class="feature-card">
             <span class="feature-card__number">04</span>
-            <h3 class="feature-card__title">VARIOUS OPTIONS</h3>
-            <p class="feature-card__subtitle">다양한 티켓 옵션</p>
+            <h3 class="feature-card__title">VARIOUS TICKETS</h3>
+            <p class="feature-card__subtitle">다양한 공연 티켓</p>
             <p class="feature-card__body">
-              현재는 더미 데이터지만, 티켓 타입/옵션을 추가해도 UI가 깨지지 않도록
+              현재는 더미 데이터지만, 티켓 타입을 추가해도 UI가 깨지지 않도록
               카드·그리드 구조를 유연하게 설계했습니다.
             </p>
           </article>

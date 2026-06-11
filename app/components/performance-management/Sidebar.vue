@@ -30,7 +30,6 @@ const dashboardItem = computed(() => ({
 const otherMenuItems = computed(() => [
   { path: getPathWithId('/performance-management/basic-info'), label: '공연 기본 정보', icon: 'document' },
   { path: getPathWithId('/performance-management/tickets'), label: '티켓 관리', icon: 'tickets' },
-  { path: getPathWithId('/performance-management/ticket-options'), label: '티켓 옵션 관리', icon: 'options' },
   { path: getPathWithId('/performance-management/reservations'), label: '예매자 관리', icon: 'users' },
   { path: getPathWithId('/performance-management/qr-checkin'), label: 'QR 체크인', icon: 'qr' },
 ])
@@ -87,10 +86,6 @@ const isActive = (path: string) => {
             <rect x="3" y="6" width="14" height="8" rx="1" stroke="currentColor" stroke-width="1.5"/>
             <path d="M6 6V4a1 1 0 011-1h6a1 1 0 011 1v2" stroke="currentColor" stroke-width="1.5"/>
             <path d="M7 10h6M7 12h4" stroke="currentColor" stroke-width="1.5"/>
-          </svg>
-          <svg v-else-if="item.icon === 'options'" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="10" cy="10" r="2" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M10 4v2M10 14v2M4 10h2M14 10h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
           </svg>
           <svg v-else-if="item.icon === 'users'" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="7" cy="6" r="2" stroke="currentColor" stroke-width="1.5"/>
