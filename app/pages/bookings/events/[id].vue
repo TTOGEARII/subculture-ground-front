@@ -143,13 +143,16 @@ const totalPrice = computed(() =>
 
 const confirmBooking = () => {
   if (!selectedTicket.value) return
+  // closeModal()이 selectedTicket/ticketCount를 초기화하므로 먼저 값을 캡처한다
+  const ticketIdx = selectedTicket.value.idx
+  const count = ticketCount.value
   closeModal()
   navigateTo({
     path: '/bookings/events/booking',
     query: {
       eventId: String(performanceId.value),
-      ticketIdx: String(selectedTicket.value.idx),
-      count: String(ticketCount.value),
+      ticketIdx: String(ticketIdx),
+      count: String(count),
     },
   })
 }
@@ -299,7 +302,7 @@ const confirmBooking = () => {
                   </div>
                   <div class="ticket-item__meta">
                     <span class="ticket-price">{{ formatPrice(ticket.ticketPrice) }}</span>
-                    <span class="ticket-limit">· 인당 {{ ticket.ticketMax }}매 제한</span>
+                    <span v-if="ticket.ticketMin > 1" class="ticket-limit">· 최소 {{ ticket.ticketMin }}매 구매</span>
                   </div>
                   <div class="ticket-remaining">
                     <span v-if="getRemainingCount(ticket) > 0" class="remaining--available">
