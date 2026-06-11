@@ -438,8 +438,11 @@
   justify-content: space-between;
   padding: 0 24px;
   height: 80px;
-  border-bottom: 1px solid var(--hairline);
-  background: var(--canvas);
+  /* --canvas/--hairline은 .page 스코프에서만 정의되어 레이아웃 헤더에선 비어
+     투명해진다. 흰 배경을 보장하는 폴백 + 흰 본문과 구분되는 미묘한 그림자. */
+  border-bottom: 1px solid var(--hairline, #ebebeb);
+  background: var(--canvas, #ffffff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .brand {
