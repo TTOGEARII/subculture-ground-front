@@ -25,7 +25,6 @@ const submitting = ref(false)
 const error = ref<Error | null>(null)
 const bookingError = ref('')
 const bookingSuccess = ref(false)
-const qrDataUrl = ref('') // 입장용 QR (예매 번호 인코딩)
 
 onMounted(async () => {
   if (!eventId.value || Number.isNaN(eventId.value)) {
@@ -99,20 +98,13 @@ const handleConfirmBooking = async () => {
   submitting.value = true
   bookingError.value = ''
   try {
-    const res = await apiClient.post<{ idx: number }>('/ticket-user', {
+    await apiClient.post('/ticket-user', {
       ticketIdx: selectedTicket.value.idx,
       userIdx: user.value.idx,
       ticketCnt: ticketCount.value,
       ticketTotalPrice: totalPrice.value,
       ticketStatus: 0, // 0: 대기
     })
-    // 입장용 QR 생성 (예매 번호를 인코딩 → 호스트가 QR 체크인에서 스캔)
-    try {
-      const QRCode = await import('qrcode')
-      qrDataUrl.value = await QRCode.toDataURL(`SBG-RES-${res.data.idx}`, { width: 220, margin: 1 })
-    } catch {
-      qrDataUrl.value = ''
-    }
     bookingSuccess.value = true
   } catch (err: any) {
     bookingError.value =
@@ -134,12 +126,9 @@ const handleConfirmBooking = async () => {
         {{ performance?.name }}<br/>
         {{ ticketCount }}매 · {{ formatPrice(totalPrice) }}
       </p>
-      <p class="success-notice">입금 확인 후 예매가 승인됩니다.</p>
-
-      <div v-if="qrDataUrl" class="ticket-qr-box">
-        <img :src="qrDataUrl" alt="입장 QR 코드" class="ticket-qr" />
-        <p class="ticket-qr-hint">입장 시 이 QR을 보여주세요</p>
-      </div>
+      <p class="success-notice">
+        입금 확인 후 예매가 승인되면, 입장 QR이 카카오톡과 마이페이지로 제공됩니다.
+      </p>
 
       <div class="success-actions">
         <NuxtLink to="/my-page" class="btn btn--primary">마이페이지 확인</NuxtLink>
@@ -438,29 +427,6 @@ const handleConfirmBooking = async () => {
   padding: 12px 20px;
   background: #f7f7f7;
   border-radius: 8px;
-}
-
-.ticket-qr-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.ticket-qr {
-  width: 180px;
-  height: 180px;
-  border: 1px solid #ebebeb;
-  border-radius: 12px;
-  padding: 8px;
-  background: #ffffff;
-}
-
-.ticket-qr-hint {
-  margin: 0;
-  font-size: 12px;
-  color: #929292;
 }
 
 .success-actions {
