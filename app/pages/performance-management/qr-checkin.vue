@@ -52,6 +52,7 @@ const doCheckIn = async (idx: number) => {
     }
     if (target.ticketStatus === 2) {
       lastResult.value = { ok: false, message: `이미 체크인된 예매예요. (${target.buyerName || '구매자'})` }
+      alert('이미 체크인이 완료되었습니다.')
       return
     }
     if (target.ticketStatus === 3) {
