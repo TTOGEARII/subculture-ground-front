@@ -114,9 +114,12 @@ export const useAuth = () => {
     const config = useRuntimeConfig()
     const restKey = config.public.kakaoRestKey as string
     const redirectUri = config.public.kakaoRedirectUri as string
+    // 동의항목: 닉네임·프로필사진·카카오톡 메시지 발송 (+이메일이 설정돼 있으면 같이)
+    const scope = 'profile_nickname,profile_image,talk_message'
     const url =
       `https://kauth.kakao.com/oauth/authorize?client_id=${restKey}` +
-      `&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code`
+      `&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code` +
+      `&scope=${encodeURIComponent(scope)}`
     window.location.href = url
   }
 
