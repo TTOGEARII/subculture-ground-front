@@ -76,6 +76,14 @@ useSeoMeta({
 const ticketPrice = computed(() => selectedTicket.value?.ticketPrice ?? performance.value?.price ?? 0)
 const totalPrice = computed(() => ticketPrice.value * ticketCount.value)
 
+// 잔여 수량 = 최대 수량 - 판매 수량. 선택~확정 사이 재고 소진/직접 진입을 화면에서 차단한다.
+const remaining = computed(() =>
+  selectedTicket.value ? selectedTicket.value.ticketMax - selectedTicket.value.ticketCount : 0,
+)
+const isSoldOut = computed(() => remaining.value <= 0)
+const isInsufficient = computed(() => !isSoldOut.value && remaining.value < ticketCount.value)
+const canBook = computed(() => !!selectedTicket.value && !isSoldOut.value && !isInsufficient.value)
+
 const formatDate = (dateString: string) => {
   const date = new Date(dateString)
   const year = date.getFullYear()
@@ -93,7 +101,7 @@ const goBackToDetail = () => {
 }
 
 const handleConfirmBooking = async () => {
-  if (!selectedTicket.value || !user.value) return
+  if (!selectedTicket.value || !user.value || !canBook.value) return
 
   submitting.value = true
   bookingError.value = ''
@@ -176,12 +184,25 @@ const handleConfirmBooking = async () => {
               <span class="summary-label">티켓 수량</span>
               <span class="summary-value">{{ ticketCount }}매</span>
             </div>
+            <div v-if="selectedTicket" class="summary-row">
+              <span class="summary-label">잔여 수량</span>
+              <span class="summary-value" :class="{ 'summary-value--soldout': isSoldOut }">
+                {{ isSoldOut ? '매진' : `${remaining}매` }}
+              </span>
+            </div>
             <div class="summary-row summary-row--total">
               <span class="summary-label">총 결제금액</span>
               <span class="summary-value">{{ formatPrice(totalPrice) }}</span>
             </div>
           </div>
         </section>
+
+        <p v-if="isSoldOut" class="booking-notice booking-notice--soldout">
+          이 티켓은 매진되어 예매할 수 없어요.
+        </p>
+        <p v-else-if="isInsufficient" class="booking-notice booking-notice--soldout">
+          남은 수량({{ remaining }}매)보다 많이 선택하셨어요. 수량을 줄여 다시 시도해주세요.
+        </p>
 
         <div v-if="bookingError" class="booking-error">{{ bookingError }}</div>
 
@@ -192,10 +213,11 @@ const handleConfirmBooking = async () => {
           <button
             type="button"
             class="btn btn--primary"
-            :disabled="submitting"
+            :disabled="submitting || !canBook"
             @click="handleConfirmBooking"
           >
             <span v-if="submitting">처리 중...</span>
+            <span v-else-if="isSoldOut">매진</span>
             <span v-else>예매 확정</span>
           </button>
         </div>
@@ -350,6 +372,31 @@ const handleConfirmBooking = async () => {
 .btn--primary:hover {
   background: #e00b41;
   border-color: #e00b41;
+}
+
+.btn--primary:disabled {
+  background: #dddddd;
+  border-color: #dddddd;
+  color: #ffffff;
+  cursor: not-allowed;
+}
+
+.summary-value--soldout {
+  color: #c13515;
+  font-weight: 700;
+}
+
+.booking-notice {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.booking-notice--soldout {
+  background: rgba(193, 53, 21, 0.08);
+  border: 1px solid rgba(193, 53, 21, 0.3);
+  color: #c13515;
 }
 
 .back-link {
