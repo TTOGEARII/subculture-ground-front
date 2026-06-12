@@ -172,7 +172,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
               Google로 로그인
             </button>
 
-            <button type="button" class="btn-social btn-kakao">
+            <button type="button" class="btn-social btn-kakao" @click="auth.startKakaoLogin()">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M10 0C4.477 0 0 3.582 0 8c0 2.914 1.618 5.465 4 6.909L3 20l5.355-2.78C9.17 17.52 9.58 17.5 10 17.5c5.523 0 10-3.582 10-8S15.523 0 10 0z" fill="#3C1E1E"/>
               </svg>

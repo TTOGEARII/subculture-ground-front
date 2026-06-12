@@ -108,6 +108,33 @@ export const useAuth = () => {
   }
 
   /**
+   * 카카오 로그인 시작 — 카카오 인가 페이지로 리다이렉트
+   */
+  const startKakaoLogin = () => {
+    const config = useRuntimeConfig()
+    const restKey = config.public.kakaoRestKey as string
+    const redirectUri = config.public.kakaoRedirectUri as string
+    const url =
+      `https://kauth.kakao.com/oauth/authorize?client_id=${restKey}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code`
+    window.location.href = url
+  }
+
+  /**
+   * 카카오 콜백 처리 — 인가코드(code)를 백엔드로 보내 로그인
+   * @param code 카카오 인가 코드
+   * @param redirectUri authorize 때와 동일한 리다이렉트 URI
+   */
+  const kakaoLogin = async (code: string, redirectUri: string) => {
+    const response = await apiClient.post<{ encrypted: string }>(
+      '/auth/kakao',
+      encryptRequest({ code, redirectUri }),
+    )
+    const decryptedData = decryptResponse<AuthResponse>(response.data.encrypted)
+    setAuthState(decryptedData)
+  }
+
+  /**
    * 프로필 조회
    * @returns 사용자 프로필 정보 또는 null (토큰이 없을 경우)
    */
@@ -138,6 +165,8 @@ export const useAuth = () => {
     token,
     login,
     register,
+    startKakaoLogin,
+    kakaoLogin,
     fetchProfile,
     logout,
   }

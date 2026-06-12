@@ -34,6 +34,13 @@ export default defineNuxtConfig({
       kakaoJsKey:
         process.env.NUXT_PUBLIC_KAKAO_JS_KEY ||
         '9183a6792760b7c71d5f99de1a5ab1b9',
+      // 카카오 로그인 REST 키 (authorize URL client_id) + 리다이렉트 URI
+      kakaoRestKey:
+        process.env.NUXT_PUBLIC_KAKAO_REST_KEY ||
+        '858961be459eafee64eb3f3e5a01802e',
+      kakaoRedirectUri:
+        process.env.NUXT_PUBLIC_KAKAO_REDIRECT_URI ||
+        'http://localhost:3000/auth/kakao/callback',
     },
   },
 })
