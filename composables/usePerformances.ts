@@ -15,6 +15,21 @@ export interface Reservation {
   buyerPhone: string | null
 }
 
+/** 마이페이지 내 예매 내역 */
+export interface MyReservation {
+  idx: number
+  eventId: number
+  eventName: string
+  eventDate: string
+  eventTime: string
+  ticketName: string | null
+  ticketCnt: number
+  ticketTotalPrice: number
+  ticketStatus: 0 | 1 | 2 | 3
+  ticketChkDt: string | null
+  createDt: string | null
+}
+
 export interface TicketInfo {
   idx: number
   pmIdx: number
@@ -350,6 +365,14 @@ export const usePerformances = () => {
   }
 
   /**
+   * 마이페이지 — 내 예매 내역 조회
+   */
+  async function getMyReservations(): Promise<MyReservation[]> {
+    const { data } = await apiClient.get<MyReservation[]>('/ticket-user/my')
+    return data
+  }
+
+  /**
    * 공연 삭제
    */
   async function deletePerformance(id: number): Promise<void> {
@@ -385,6 +408,7 @@ export const usePerformances = () => {
     deleteTicketInfo,
     getReservations,
     changeReservationStatus,
+    getMyReservations,
     createPerformance,
     updatePerformance,
     deletePerformance,

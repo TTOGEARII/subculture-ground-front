@@ -1,13 +1,30 @@
 <script setup lang="ts">
 import { useAuth } from '../../../composables/useAuth'
-import { usePerformances, getStatusText } from '../../../composables/usePerformances'
+import { usePerformances, getStatusText, type MyReservation } from '../../../composables/usePerformances'
 
 definePageMeta({
   layout: 'bookings',
 })
 
 const { user, isAuthenticated, fetchProfile, logout } = useAuth()
-const { performances, loadMyPerformances, loading: loadingPerformances } = usePerformances()
+const {
+  performances,
+  loadMyPerformances,
+  loading: loadingPerformances,
+  getMyReservations,
+} = usePerformances()
+
+// 내 예매 내역
+const myReservations = ref<MyReservation[]>([])
+const loadingReservations = ref(true)
+const qrMap = ref<Record<number, string>>({}) // 예매 idx → QR data URL
+
+const resStatusMeta: Record<number, { label: string; cls: string }> = {
+  0: { label: '승인대기', cls: 'is-pending' },
+  1: { label: '예매완료', cls: 'is-paid' },
+  2: { label: '입장완료', cls: 'is-checked' },
+  3: { label: '취소', cls: 'is-cancelled' },
+}
 
 onMounted(async () => {
   if (!isAuthenticated.value) {
@@ -19,9 +36,26 @@ onMounted(async () => {
     await fetchProfile()
   }
 
-  // 내가 등록한 공연 목록 로드
+  // 내가 등록한 공연 + 내 예매 내역 로드
   await loadMyPerformances()
+  try {
+    myReservations.value = await getMyReservations()
+    // 승인/입장완료 예매는 입장 QR 생성
+    const QRCode = await import('qrcode')
+    for (const r of myReservations.value) {
+      if (r.ticketStatus === 1 || r.ticketStatus === 2) {
+        qrMap.value[r.idx] = await QRCode.toDataURL(`SBG-RES-${r.idx}`, { width: 160, margin: 1 })
+      }
+    }
+  } catch {
+    /* 예매 내역 로드 실패는 무시 */
+  } finally {
+    loadingReservations.value = false
+  }
 })
+
+const formatPrice = (price: number) =>
+  price === 0 ? '무료' : new Intl.NumberFormat('ko-KR').format(price) + '원'
 
 const config = useRuntimeConfig()
 
@@ -156,6 +190,36 @@ const formatPhone = (phone: string | null | undefined) => {
             </svg>
           </NuxtLink>
         </div>
+      </div>
+
+      <!-- 내 예매 내역 -->
+      <div class="my-res-section">
+        <h2 class="section-title">내 예매 내역</h2>
+
+        <p v-if="loadingReservations" class="my-res-empty">불러오는 중...</p>
+        <p v-else-if="myReservations.length === 0" class="my-res-empty">
+          아직 예매한 공연이 없어요.
+          <NuxtLink to="/bookings/events" class="my-res-empty-link">공연 보러가기 →</NuxtLink>
+        </p>
+
+        <ul v-else class="my-res-list">
+          <li v-for="r in myReservations" :key="r.idx" class="my-res-card">
+            <div class="my-res-info">
+              <span class="my-res-status" :class="resStatusMeta[r.ticketStatus]?.cls">
+                {{ resStatusMeta[r.ticketStatus]?.label }}
+              </span>
+              <h3 class="my-res-name">{{ r.eventName }}</h3>
+              <p class="my-res-meta">{{ formatEventDate(r.eventDate) }} {{ r.eventTime }}</p>
+              <p class="my-res-sub">
+                {{ r.ticketName || '티켓' }} · {{ r.ticketCnt }}매 · {{ formatPrice(r.ticketTotalPrice) }}
+              </p>
+            </div>
+            <div v-if="qrMap[r.idx]" class="my-res-qr">
+              <img :src="qrMap[r.idx]" :alt="`예매 ${r.idx} 입장 QR`" />
+              <span class="my-res-qr__label">입장 QR</span>
+            </div>
+          </li>
+        </ul>
       </div>
 
       <!-- 바로가기 -->
@@ -424,6 +488,132 @@ const formatPhone = (phone: string | null | undefined) => {
 .my-event-arrow {
   flex-shrink: 0;
   color: #c4c4c4;
+}
+
+/* 내 예매 내역 */
+.my-res-section {
+  padding: 20px;
+  background: #ffffff;
+  border-top: 1px solid #f0f0f0;
+}
+
+.my-res-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 32px 20px;
+  background: #f9fafb;
+  border: 1px dashed #e5e7eb;
+  border-radius: 12px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.my-res-empty-link {
+  color: #ff385c;
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.my-res-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.my-res-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.my-res-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.my-res-status {
+  display: inline-block;
+  width: fit-content;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.my-res-status.is-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.my-res-status.is-paid {
+  background: #fde8ec;
+  color: #ff385c;
+}
+
+.my-res-status.is-checked {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.my-res-status.is-cancelled {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.my-res-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-res-meta {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.my-res-sub {
+  margin: 0;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.my-res-qr {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.my-res-qr img {
+  width: 84px;
+  height: 84px;
+  border: 1px solid #ebebeb;
+  border-radius: 8px;
+}
+
+.my-res-qr__label {
+  font-size: 11px;
+  color: #929292;
 }
 
 .shortcuts-section {
