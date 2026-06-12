@@ -51,7 +51,7 @@ onMounted(async () => {
     const QRCode = await import('qrcode')
     for (const r of reservations.value) {
       if (r.ticketStatus === 1 || r.ticketStatus === 2) {
-        qrMap.value[r.idx] = await QRCode.toDataURL(`SBG-RES-${r.idx}`, { width: 180, margin: 1 })
+        qrMap.value[r.idx] = await QRCode.toDataURL(`SBG-RES-${r.idx}`, { width: 400, margin: 1 })
       }
     }
   } finally {
@@ -126,8 +126,7 @@ const formatEventDate = (dateString: string) => {
             <NuxtLink :to="`/bookings/events/${r.eventId}`" class="res-link">공연 상세 →</NuxtLink>
           </div>
           <div v-if="qrMap[r.idx]" class="res-qr">
-            <img :src="qrMap[r.idx]" :alt="`예매 ${r.idx} 입장 QR`" />
-            <span class="res-qr__label">입장 QR</span>
+            <QrImage :src="qrMap[r.idx]!" :size="96" label="입장 QR" />
           </div>
         </li>
       </ul>
@@ -328,28 +327,5 @@ const formatEventDate = (dateString: string) => {
 
 .res-qr {
   flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.res-qr img {
-  width: 96px;
-  height: 96px;
-  border: 1px solid #ebebeb;
-  border-radius: 8px;
-}
-
-.res-qr__label {
-  font-size: 11px;
-  color: #929292;
-}
-
-@media (max-width: 600px) {
-  .res-qr img {
-    width: 76px;
-    height: 76px;
-  }
 }
 </style>
