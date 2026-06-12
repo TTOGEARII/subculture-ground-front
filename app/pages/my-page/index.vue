@@ -154,7 +154,7 @@ const formatPhone = (phone: string | null | undefined) => {
 
         <div v-else class="my-events-list">
           <NuxtLink
-            v-for="event in performances"
+            v-for="event in performances.slice(0, 3)"
             :key="event.id"
             :to="`/performance-management?id=${event.id}`"
             class="my-event-card"
@@ -190,11 +190,28 @@ const formatPhone = (phone: string | null | undefined) => {
             </svg>
           </NuxtLink>
         </div>
+
+        <NuxtLink
+          v-if="performances.length > 3"
+          to="/performance-management/select"
+          class="section-more"
+        >
+          전체 {{ performances.length }}건 보기 →
+        </NuxtLink>
       </div>
 
       <!-- 내 예매 내역 -->
       <div class="my-res-section">
-        <h2 class="section-title">내 예매 내역</h2>
+        <div class="my-res-head">
+          <h2 class="section-title">내 예매 내역</h2>
+          <NuxtLink
+            v-if="myReservations.length > 0"
+            to="/my-page/reservations"
+            class="my-res-more"
+          >
+            전체 보기
+          </NuxtLink>
+        </div>
 
         <p v-if="loadingReservations" class="my-res-empty">불러오는 중...</p>
         <p v-else-if="myReservations.length === 0" class="my-res-empty">
@@ -203,7 +220,7 @@ const formatPhone = (phone: string | null | undefined) => {
         </p>
 
         <ul v-else class="my-res-list">
-          <li v-for="r in myReservations" :key="r.idx" class="my-res-card">
+          <li v-for="r in myReservations.slice(0, 3)" :key="r.idx" class="my-res-card">
             <div class="my-res-info">
               <span class="my-res-status" :class="resStatusMeta[r.ticketStatus]?.cls">
                 {{ resStatusMeta[r.ticketStatus]?.label }}
@@ -233,13 +250,6 @@ const formatPhone = (phone: string | null | undefined) => {
             </svg>
           </NuxtLink>
           
-          <button type="button" class="shortcut-item">
-            <span class="shortcut-text">내 쿠폰함</span>
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-
           <div class="shortcut-divider"></div>
 
           <NuxtLink to="/performance-management/select" class="shortcut-item">
@@ -488,6 +498,38 @@ const formatPhone = (phone: string | null | undefined) => {
 .my-event-arrow {
   flex-shrink: 0;
   color: #c4c4c4;
+}
+
+.section-more {
+  display: block;
+  margin-top: 12px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  text-decoration: none;
+}
+
+.section-more:hover {
+  color: #111827;
+}
+
+.my-res-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.my-res-more {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ff385c;
+  text-decoration: none;
+}
+
+.my-res-more:hover {
+  text-decoration: underline;
 }
 
 /* 내 예매 내역 */
