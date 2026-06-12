@@ -44,7 +44,7 @@ onMounted(async () => {
     const QRCode = await import('qrcode')
     for (const r of myReservations.value) {
       if (r.ticketStatus === 1 || r.ticketStatus === 2) {
-        qrMap.value[r.idx] = await QRCode.toDataURL(`SBG-RES-${r.idx}`, { width: 160, margin: 1 })
+        qrMap.value[r.idx] = await QRCode.toDataURL(`SBG-RES-${r.idx}`, { width: 400, margin: 1 })
       }
     }
   } catch {
@@ -232,8 +232,7 @@ const formatPhone = (phone: string | null | undefined) => {
               </p>
             </div>
             <div v-if="qrMap[r.idx]" class="my-res-qr">
-              <img :src="qrMap[r.idx]" :alt="`예매 ${r.idx} 입장 QR`" />
-              <span class="my-res-qr__label">입장 QR</span>
+              <QrImage :src="qrMap[r.idx]!" :size="72" label="입장 QR" />
             </div>
           </li>
         </ul>
@@ -640,22 +639,6 @@ const formatPhone = (phone: string | null | undefined) => {
 
 .my-res-qr {
   flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.my-res-qr img {
-  width: 84px;
-  height: 84px;
-  border: 1px solid #ebebeb;
-  border-radius: 8px;
-}
-
-.my-res-qr__label {
-  font-size: 11px;
-  color: #929292;
 }
 
 .shortcuts-section {
