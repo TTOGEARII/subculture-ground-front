@@ -69,6 +69,7 @@ const doCheckIn = async (idx: number) => {
       ticket: `${target.ticketName || '티켓'} ${target.ticketCnt}매`,
       time: new Date().toLocaleTimeString('ko-KR'),
     })
+    alert('체크인이 완료되었습니다.')
   } catch (err: any) {
     lastResult.value = { ok: false, message: err?.response?.data?.message || '체크인에 실패했어요.' }
   } finally {
