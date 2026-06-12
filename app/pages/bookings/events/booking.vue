@@ -57,7 +57,7 @@ onMounted(async () => {
 
     // ticketIdx 파라미터로 선택된 티켓 찾기
     if (ticketIdxParam.value) {
-      selectedTicket.value = tickets.find((t) => t.idx === ticketIdxParam.value) ?? tickets[0] ?? null
+      selectedTicket.value = tickets.find((t) => Number(t.idx) === ticketIdxParam.value) ?? tickets[0] ?? null
     } else {
       selectedTicket.value = tickets[0] ?? null
     }
