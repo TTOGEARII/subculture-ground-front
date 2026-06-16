@@ -59,9 +59,12 @@ const formatPrice = (price: number) =>
 
 const config = useRuntimeConfig()
 
-// 이미지 URL 변환 (상대경로 → 절대경로)
+// 이미지 URL 변환 — 호스트가 박힌 절대 URL(레거시 localhost 등)이든 상대경로든
+// /uploads/ 이하만 apiBase로 재절대화해 환경에 무관하게 표시
 const getImageSrc = (image?: string) => {
   if (!image) return null
+  const uploadsIdx = image.indexOf('/uploads/')
+  if (uploadsIdx >= 0) return `${config.public.apiBase}${image.slice(uploadsIdx)}`
   if (image.startsWith('http')) return image
   return `${config.public.apiBase}${image}`
 }
