@@ -240,7 +240,7 @@ const handleConfirmBooking = async () => {
 .booking-page {
   min-height: 100vh;
   background: #ffffff;
-  color: #222222;
+  color: var(--ink);
   font-family: Circular, -apple-system, system-ui, Roboto, 'Helvetica Neue', sans-serif;
 }
 
@@ -258,7 +258,7 @@ const handleConfirmBooking = async () => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: #6a6a6a;
+  color: var(--muted);
   text-decoration: none;
   font-size: 14px;
   margin-bottom: 16px;
@@ -266,14 +266,14 @@ const handleConfirmBooking = async () => {
 }
 
 .back-link:hover {
-  color: #222222;
+  color: var(--ink);
 }
 
 .page-title {
   margin: 0;
   font-size: 24px;
   font-weight: 700;
-  color: #222222;
+  color: var(--ink);
 }
 
 .booking-content {
@@ -288,13 +288,13 @@ const handleConfirmBooking = async () => {
   margin: 0 0 16px;
   font-size: 18px;
   font-weight: 600;
-  color: #222222;
+  color: var(--ink);
 }
 
 .performance-summary {
   padding: 24px;
-  background: #f7f7f7;
-  border: 1px solid #ebebeb;
+  background: var(--surface-soft);
+  border: 1px solid var(--hairline-soft);
   border-radius: 14px;
   display: flex;
   flex-direction: column;
@@ -309,31 +309,31 @@ const handleConfirmBooking = async () => {
 
 .summary-label {
   font-size: 14px;
-  color: #6a6a6a;
+  color: var(--muted);
 }
 
 .summary-value {
   font-size: 14px;
   font-weight: 500;
-  color: #222222;
+  color: var(--ink);
 }
 
 .summary-row--total {
   padding-top: 16px;
   margin-top: 8px;
-  border-top: 1px solid #dddddd;
+  border-top: 1px solid var(--hairline);
 }
 
 .summary-row--total .summary-label {
   font-size: 16px;
   font-weight: 700;
-  color: #222222;
+  color: var(--ink);
 }
 
 .summary-row--total .summary-value {
   font-size: 18px;
   font-weight: 700;
-  color: #ff385c;
+  color: var(--primary);
 }
 
 .booking-actions {
@@ -355,34 +355,34 @@ const handleConfirmBooking = async () => {
 
 .btn--secondary {
   background: #ffffff;
-  color: #222222;
-  border: 1px solid #dddddd;
+  color: var(--ink);
+  border: 1px solid var(--hairline);
 }
 
 .btn--secondary:hover {
-  background: #f7f7f7;
+  background: var(--surface-soft);
 }
 
 .btn--primary {
-  background: #ff385c;
+  background: var(--primary);
   color: #ffffff;
-  border: 1px solid #ff385c;
+  border: 1px solid var(--primary);
 }
 
 .btn--primary:hover {
-  background: #e00b41;
-  border-color: #e00b41;
+  background: var(--primary-active);
+  border-color: var(--primary-active);
 }
 
 .btn--primary:disabled {
-  background: #dddddd;
-  border-color: #dddddd;
+  background: var(--hairline);
+  border-color: var(--hairline);
   color: #ffffff;
   cursor: not-allowed;
 }
 
 .summary-value--soldout {
-  color: #c13515;
+  color: var(--error);
   font-weight: 700;
 }
 
@@ -396,14 +396,14 @@ const handleConfirmBooking = async () => {
 .booking-notice--soldout {
   background: rgba(193, 53, 21, 0.08);
   border: 1px solid rgba(193, 53, 21, 0.3);
-  color: #c13515;
+  color: var(--error);
 }
 
 .back-link {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: #6a6a6a;
+  color: var(--muted);
   background: none;
   border: none;
   font-size: 14px;
@@ -414,7 +414,7 @@ const handleConfirmBooking = async () => {
 }
 
 .back-link:hover {
-  color: #222222;
+  color: var(--ink);
 }
 
 .booking-error {
@@ -422,7 +422,7 @@ const handleConfirmBooking = async () => {
   border-radius: 8px;
   background: rgba(193, 53, 21, 0.08);
   border: 1px solid rgba(193, 53, 21, 0.3);
-  color: #c13515;
+  color: var(--error);
   font-size: 14px;
   margin-bottom: 16px;
 }
@@ -443,7 +443,7 @@ const handleConfirmBooking = async () => {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: #ff385c;
+  background: var(--primary);
   color: #ffffff;
   font-size: 28px;
   font-weight: 700;
@@ -457,22 +457,22 @@ const handleConfirmBooking = async () => {
   margin: 0;
   font-size: 24px;
   font-weight: 700;
-  color: #222222;
+  color: var(--ink);
 }
 
 .success-desc {
   margin: 0;
   font-size: 16px;
-  color: #222222;
+  color: var(--ink);
   line-height: 1.6;
 }
 
 .success-notice {
   margin: 0;
   font-size: 14px;
-  color: #6a6a6a;
+  color: var(--muted);
   padding: 12px 20px;
-  background: #f7f7f7;
+  background: var(--surface-soft);
   border-radius: 8px;
 }
 
@@ -497,12 +497,12 @@ const handleConfirmBooking = async () => {
 .empty-text {
   margin: 0;
   font-size: 16px;
-  color: #222222;
+  color: var(--ink);
 }
 
 .empty-hint {
   margin: 0;
   font-size: 14px;
-  color: #6a6a6a;
+  color: var(--muted);
 }
 </style>

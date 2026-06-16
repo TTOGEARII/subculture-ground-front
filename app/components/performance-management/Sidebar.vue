@@ -115,13 +115,13 @@ const isActive = (path: string) => {
   width: 240px;
   height: calc(100vh - 64px);
   background: #ffffff;
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid var(--color-border);
   overflow-y: auto;
 }
 
 .sidebar-header {
   padding: 20px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .logo {
@@ -146,7 +146,7 @@ const isActive = (path: string) => {
 .logo-text {
   font-size: 16px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .sidebar-nav {
@@ -158,13 +158,13 @@ const isActive = (path: string) => {
   align-items: center;
   gap: 12px;
   padding: 12px 20px;
-  color: #374151;
+  color: var(--color-text-body);
   text-decoration: none;
   transition: background-color 0.2s ease;
 }
 
 .nav-item:hover {
-  background: #f9fafb;
+  background: var(--color-surface-subtle);
 }
 
 .nav-item--active {
@@ -187,5 +187,45 @@ const isActive = (path: string) => {
 .nav-label {
   font-size: 14px;
   font-weight: 500;
+}
+
+/* ===== 모바일: 세로 사이드바 → 헤더 아래 가로 스크롤 네비 ===== */
+@media (max-width: 768px) {
+  .performance-sidebar {
+    top: 64px;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sidebar-header {
+    display: none;
+  }
+
+  .sidebar-nav {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    padding: 8px 12px;
+    gap: 4px;
+  }
+
+  .nav-item {
+    flex-shrink: 0;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 9999px;
+    white-space: nowrap;
+  }
+
+  .nav-label {
+    font-size: 13px;
+  }
 }
 </style>

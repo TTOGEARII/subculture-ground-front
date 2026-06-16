@@ -23,6 +23,6 @@ const { color } = defineProps({
   background-color: #ffffff;
   box-shadow: rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px 0;
   font-size: 14px;
-  color: #222222;
+  color: var(--ink);
 }
 </style>

@@ -909,19 +909,6 @@ const toggleCategory = (category: string) => {
   margin-bottom: 32px;
 }
 
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: var(--color-primary);
-  margin-bottom: 16px;
-}
-
-.separator {
-  color: var(--color-text-faint);
-}
-
 .page-title {
   font-size: 28px;
   font-weight: 700;
@@ -1079,6 +1066,38 @@ const toggleCategory = (category: string) => {
 
   .form-group--full {
     grid-column: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 22px;
+  }
+
+  .content-body {
+    padding: 20px 16px;
+  }
+
+  .checklist-section,
+  .notes-section {
+    padding: 20px 16px;
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+  }
+
+  .date-time-group {
+    flex-wrap: wrap;
+  }
+
+  .date-input-wrapper,
+  .time-input-wrapper {
+    flex: 1 1 140px;
   }
 }
 </style>

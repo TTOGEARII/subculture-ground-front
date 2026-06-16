@@ -202,62 +202,13 @@ const handleKeyPress = (e: KeyboardEvent) => {
 .login-page {
   min-height: 100vh;
   background: #ffffff;
-  color: #222222;
+  color: var(--ink);
   display: flex;
   flex-direction: column;
   font-family: Circular, -apple-system, system-ui, Roboto, 'Helvetica Neue', sans-serif;
 }
 
-.header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  height: 80px;
-  border-bottom: 1px solid #dddddd;
-  background: #ffffff;
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  text-decoration: none;
-  color: #ff385c;
-  font-weight: 700;
-  font-size: 18px;
-}
-
-.brand__dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 9999px;
-  background: #ff385c;
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.nav__link {
-  color: #6a6a6a;
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 500;
-  padding: 8px 12px;
-  border-radius: 8px;
-  transition: background-color 120ms ease, color 120ms ease;
-}
-
-.nav__link:hover {
-  color: #222222;
-  background: #f7f7f7;
-}
+/* 헤더는 전역 .header/.brand/.nav (index.css) 를 그대로 사용 — 중복 정의 제거 */
 
 .main-center {
   flex: 1;
@@ -273,7 +224,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
 }
 
 .login-card {
-  border: 1px solid #dddddd;
+  border: 1px solid var(--hairline);
   border-radius: 14px;
   background: #ffffff;
   padding: 40px;
@@ -289,14 +240,14 @@ const handleKeyPress = (e: KeyboardEvent) => {
   margin: 0 0 8px;
   font-size: 28px;
   font-weight: 700;
-  color: #222222;
+  color: var(--ink);
   letter-spacing: -0.02em;
 }
 
 .login-subtitle {
   margin: 0;
   font-size: 16px;
-  color: #6a6a6a;
+  color: var(--muted);
 }
 
 .login-form {
@@ -308,7 +259,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
   border-radius: 8px;
   background: rgba(193, 53, 21, 0.08);
   border: 1px solid rgba(193, 53, 21, 0.3);
-  color: #c13515;
+  color: var(--error);
   font-size: 14px;
   margin-bottom: 20px;
   text-align: center;
@@ -323,17 +274,17 @@ const handleKeyPress = (e: KeyboardEvent) => {
   margin-bottom: 6px;
   font-size: 14px;
   font-weight: 500;
-  color: #6a6a6a;
+  color: var(--muted);
 }
 
 .form-input {
   width: 100%;
   height: 56px;
   padding: 14px 12px;
-  border: 1px solid #dddddd;
+  border: 1px solid var(--hairline);
   border-radius: 8px;
   background: #ffffff;
-  color: #222222;
+  color: var(--ink);
   font-size: 16px;
   transition: border-color 120ms ease;
   outline: none;
@@ -341,22 +292,22 @@ const handleKeyPress = (e: KeyboardEvent) => {
 }
 
 .form-input:focus {
-  border-color: #222222;
+  border-color: var(--ink);
   border-width: 2px;
 }
 
 .form-input::placeholder {
-  color: #929292;
+  color: var(--muted-soft);
 }
 
 .form-input--error {
-  border-color: #c13515;
+  border-color: var(--error);
 }
 
 .form-error {
   margin: 6px 0 0;
   font-size: 12px;
-  color: #c13515;
+  color: var(--error);
 }
 
 .form-options {
@@ -378,23 +329,23 @@ const handleKeyPress = (e: KeyboardEvent) => {
   height: 18px;
   border-radius: 4px;
   cursor: pointer;
-  accent-color: #222222;
+  accent-color: var(--ink);
 }
 
 .checkbox-text {
   font-size: 14px;
-  color: #6a6a6a;
+  color: var(--muted);
 }
 
 .forgot-link {
   font-size: 14px;
-  color: #6a6a6a;
+  color: var(--muted);
   text-decoration: underline;
   transition: color 120ms ease;
 }
 
 .forgot-link:hover {
-  color: #222222;
+  color: var(--ink);
 }
 
 .btn-submit {
@@ -403,7 +354,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
   padding: 0 24px;
   border-radius: 8px;
   border: none;
-  background: #ff385c;
+  background: var(--primary);
   color: #ffffff;
   font-size: 16px;
   font-weight: 500;
@@ -412,7 +363,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
 }
 
 .btn-submit:hover:not(:disabled) {
-  background: #e00b41;
+  background: var(--primary-active);
 }
 
 .btn-submit:disabled {
@@ -431,13 +382,13 @@ const handleKeyPress = (e: KeyboardEvent) => {
   content: '';
   flex: 1;
   height: 1px;
-  background: #ebebeb;
+  background: var(--hairline-soft);
 }
 
 .login-divider span {
   padding: 0 16px;
   font-size: 14px;
-  color: #6a6a6a;
+  color: var(--muted);
 }
 
 .social-login {
@@ -454,7 +405,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  border: 1px solid #dddddd;
+  border: 1px solid var(--hairline);
   border-radius: 8px;
   font-size: 15px;
   font-weight: 500;
@@ -464,11 +415,11 @@ const handleKeyPress = (e: KeyboardEvent) => {
 
 .btn-google {
   background: #ffffff;
-  color: #222222;
+  color: var(--ink);
 }
 
 .btn-google:hover {
-  background: #f7f7f7;
+  background: var(--surface-soft);
 }
 
 .btn-kakao {
@@ -488,12 +439,12 @@ const handleKeyPress = (e: KeyboardEvent) => {
 .signup-text {
   margin: 0;
   font-size: 14px;
-  color: #6a6a6a;
+  color: var(--muted);
 }
 
 .signup-link {
   margin-left: 4px;
-  color: #ff385c;
+  color: var(--primary);
   text-decoration: none;
   font-weight: 600;
 }
@@ -503,9 +454,9 @@ const handleKeyPress = (e: KeyboardEvent) => {
 }
 
 .page-footer {
-  border-top: 1px solid #dddddd;
+  border-top: 1px solid var(--hairline);
   padding: 18px 24px;
-  color: #6a6a6a;
+  color: var(--muted);
   background: #ffffff;
 }
 
@@ -521,6 +472,16 @@ const handleKeyPress = (e: KeyboardEvent) => {
 
   .login-title {
     font-size: 24px;
+  }
+}
+
+@media (max-width: 420px) {
+  .login-card {
+    padding: 24px 16px;
+  }
+
+  .main-center {
+    padding: 24px 16px;
   }
 }
 </style>

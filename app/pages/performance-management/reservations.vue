@@ -206,32 +206,6 @@ const formatDateTime = (v: string | null) => {
   margin-bottom: 24px;
 }
 
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: var(--color-primary);
-  margin-bottom: 16px;
-}
-
-.separator {
-  color: var(--color-text-faint);
-}
-
-.page-title {
-  margin: 0 0 8px;
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.page-subtitle {
-  margin: 0;
-  font-size: 14px;
-  color: var(--color-text-muted);
-}
-
 .status-tabs {
   display: flex;
   gap: 4px;
@@ -290,6 +264,7 @@ const formatDateTime = (v: string | null) => {
 
 .res-table {
   width: 100%;
+  min-width: 720px;
   border-collapse: collapse;
   font-size: 13px;
 }
@@ -409,5 +384,21 @@ const formatDateTime = (v: string | null) => {
   font-size: 12px;
   color: #059669;
   font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 22px;
+  }
+
+  .status-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .status-tab {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
 }
 </style>

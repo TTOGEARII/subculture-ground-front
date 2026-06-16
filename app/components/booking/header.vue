@@ -116,14 +116,14 @@ const getInitials = computed(() => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #ff385c;
+  background: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
   font-weight: 600;
   font-size: 16px;
-  border: 2px solid #dddddd;
+  border: 2px solid var(--hairline);
   transition: box-shadow 0.2s ease;
 }
 
@@ -137,7 +137,7 @@ const getInitials = computed(() => {
   right: 0;
   min-width: 180px;
   background: #ffffff;
-  border: 1px solid #dddddd;
+  border: 1px solid var(--hairline);
   border-radius: 12px;
   box-shadow: rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px 0, rgba(0,0,0,0.1) 0 4px 8px 0;
   padding: 8px;
@@ -153,7 +153,7 @@ const getInitials = computed(() => {
   border-radius: 8px;
   border: none;
   background: transparent;
-  color: #222222;
+  color: var(--ink);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -162,16 +162,16 @@ const getInitials = computed(() => {
 }
 
 .dropdown-item:hover {
-  background: #f7f7f7;
+  background: var(--surface-soft);
 }
 
 .dropdown-item svg {
   flex-shrink: 0;
-  color: #6a6a6a;
+  color: var(--muted);
 }
 
 .dropdown-item:hover svg {
-  color: #222222;
+  color: var(--ink);
 }
 
 .dropdown-enter-active,

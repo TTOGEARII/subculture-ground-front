@@ -306,33 +306,6 @@ const remaining = (t: TicketInfo) => t.ticketMax - t.ticketCount
   margin-bottom: 28px;
 }
 
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: var(--color-primary);
-  margin-bottom: 16px;
-}
-
-.separator {
-  color: var(--color-text-faint);
-}
-
-.page-title {
-  margin: 0 0 8px;
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.page-subtitle {
-  margin: 0;
-  font-size: 14px;
-  color: var(--color-text-muted);
-  line-height: 1.6;
-}
-
 .btn-create {
   padding: 12px 20px;
   border: 1px dashed var(--color-primary);
@@ -518,5 +491,21 @@ const remaining = (t: TicketInfo) => t.ticketMax - t.ticketCount
   margin: 0;
   font-size: 13px;
   color: var(--color-danger-strong);
+}
+
+@media (max-width: 600px) {
+  .page-title {
+    font-size: 22px;
+  }
+
+  .ticket-row {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .ticket-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 </style>

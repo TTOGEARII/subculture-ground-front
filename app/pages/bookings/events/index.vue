@@ -233,7 +233,7 @@ const getImageSrc = (image?: string) => {
 
 .event-card {
   border-radius: 14px;
-  border: 1px solid #ebebeb;
+  border: 1px solid var(--hairline-soft);
   background: #ffffff;
   overflow: hidden;
   box-shadow: rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px 0, rgba(0,0,0,0.08) 0 4px 8px 0;
@@ -249,7 +249,7 @@ const getImageSrc = (image?: string) => {
 .event-card__image {
   position: relative;
   aspect-ratio: 3 / 2;
-  background: #f7f7f7;
+  background: var(--surface-soft);
   overflow: hidden;
 }
 
@@ -266,7 +266,7 @@ const getImageSrc = (image?: string) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f7f7f7;
+  background: var(--surface-soft);
 }
 
 .event-card__status {
@@ -298,14 +298,14 @@ const getImageSrc = (image?: string) => {
   margin: 0 0 6px;
   font-size: 12px;
   font-weight: 500;
-  color: #ff385c;
+  color: var(--primary);
 }
 
 .event-card__title {
   margin: 0 0 4px;
   font-size: 16px;
   font-weight: 600;
-  color: #222222;
+  color: var(--ink);
   line-height: 1.3;
   white-space: nowrap;
   overflow: hidden;
@@ -315,7 +315,7 @@ const getImageSrc = (image?: string) => {
 .event-card__artist {
   margin: 0 0 10px;
   font-size: 13px;
-  color: #6a6a6a;
+  color: var(--muted);
 }
 
 .event-card__meta {
@@ -330,13 +330,13 @@ const getImageSrc = (image?: string) => {
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #6a6a6a;
+  color: var(--muted);
 }
 
 .event-card__price {
   font-size: 13px;
   font-weight: 600;
-  color: #222222;
+  color: var(--ink);
 }
 
 .event-card__tags {

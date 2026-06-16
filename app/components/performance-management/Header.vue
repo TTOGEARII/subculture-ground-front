@@ -48,7 +48,7 @@ const getInitials = computed(() => {
   right: 0;
   height: 64px;
   background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
   z-index: 100;
 }
 
@@ -72,7 +72,7 @@ const getInitials = computed(() => {
 .logo-text {
   font-size: 20px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text);
   letter-spacing: -0.02em;
 }
 
@@ -105,13 +105,13 @@ const getInitials = computed(() => {
 .profile-name {
   font-size: 14px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text);
   line-height: 1.2;
 }
 
 .profile-role {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   line-height: 1.2;
 }
 </style>

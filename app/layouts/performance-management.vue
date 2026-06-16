@@ -54,4 +54,21 @@ watch(() => route.path, async () => {
   background: #ffffff;
   min-height: calc(100vh - 64px);
 }
+
+/* 태블릿: 사이드바 폭 축소 */
+@media (max-width: 1024px) {
+  .main-content {
+    padding: 28px 24px;
+  }
+}
+
+/* 모바일: 사이드바가 헤더 아래 가로 네비로 전환되므로 좌측 마진 제거 + 상단 오프셋 확보 */
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0;
+    margin-top: 116px;
+    padding: 20px 16px;
+    min-height: calc(100vh - 116px);
+  }
+}
 </style>
