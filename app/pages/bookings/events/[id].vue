@@ -103,8 +103,11 @@ const getStatusClass = (status: Performance['status']) =>
 
 const getImageSrc = (image?: string) => {
   if (!image) return null
-  if (image.startsWith('http')) return image
   const config = useRuntimeConfig()
+  // 호스트가 박힌 절대 URL(레거시 localhost 등)이든 상대경로든 /uploads/ 이하만 apiBase로 재절대화
+  const uploadsIdx = image.indexOf('/uploads/')
+  if (uploadsIdx >= 0) return `${config.public.apiBase}${image.slice(uploadsIdx)}`
+  if (image.startsWith('http')) return image
   return `${config.public.apiBase}${image}`
 }
 
