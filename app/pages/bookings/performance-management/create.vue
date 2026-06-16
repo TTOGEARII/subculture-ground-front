@@ -9,7 +9,7 @@ definePageMeta({
 })
 
 const { isAuthenticated, user, fetchProfile } = useAuth()
-const { createPerformance } = usePerformances()
+const { createPerformance, createTicketInfo } = usePerformances()
 const { loadSdk, searchPlaces } = useKakaoMap()
 
 // 폼 데이터
@@ -48,6 +48,33 @@ const categoryOptions = [
 ]
 
 const selectedCategories = ref<string[]>([])
+
+// 티켓: 공연과 함께 등록. 종류 0=계좌송금(유료) / 1=무료 / 2=유료(제휴, 비활성)
+const ticketTypes = [
+  { value: 0, label: '계좌송금 티켓', desc: '계좌송금으로 티켓값을 받아요' },
+  { value: 1, label: '무료티켓', desc: '무료로 발급하는 티켓이에요' },
+  { value: 2, label: '유료티켓', desc: '제휴 호스트 전용', disabled: true },
+]
+const makeTicket = () => ({ ticketType: 1, ticketName: '', ticketPrice: 0, ticketMax: 100, ticketMin: 1 })
+const tickets = ref([makeTicket()])
+const addTicket = () => tickets.value.push(makeTicket())
+const removeTicket = (i: number) => tickets.value.splice(i, 1)
+const selectTicketType = (i: number, value: number) => {
+  tickets.value[i].ticketType = value
+  if (value === 1) tickets.value[i].ticketPrice = 0 // 무료는 가격 0 고정
+}
+// 이름이 있는 행만 등록 대상으로 검증한다(티켓은 선택). 문제 있으면 메시지 반환.
+const validateTickets = (): string | null => {
+  for (const [i, t] of tickets.value.entries()) {
+    const name = t.ticketName.trim()
+    if (!name) continue
+    if (name.length > 12) return `${i + 1}번 티켓: 이름은 최대 12글자예요.`
+    if (t.ticketMax < 1) return `${i + 1}번 티켓: 발행 매수는 1 이상이어야 해요.`
+    if (t.ticketType !== 1 && t.ticketPrice <= 0) return `${i + 1}번 티켓: 유료 티켓은 가격을 입력해주세요.`
+    if (t.ticketMin < 1 || t.ticketMin > t.ticketMax) return `${i + 1}번 티켓: 1인당 최소 매수가 올바르지 않아요.`
+  }
+  return null
+}
 
 const isLoading = ref(false)
 const isUploading = ref(false)
@@ -206,6 +233,13 @@ const handleSubmit = async () => {
     return
   }
 
+  // 함께 등록할 티켓 검증 (공연 생성 전에 먼저 막는다)
+  const ticketErr = validateTickets()
+  if (ticketErr) {
+    errorMessage.value = ticketErr
+    return
+  }
+
   isLoading.value = true
   isUploading.value = false
   errorMessage.value = ''
@@ -237,10 +271,40 @@ const handleSubmit = async () => {
     }
 
     const newPerformance = await createPerformance(performanceData)
-    successMessage.value = '공연이 등록되었습니다.'
-    // 선택 페이지로 이동
+
+    // 입력된(이름 있는) 티켓들을 새 공연 idx로 함께 등록
+    const ticketsToCreate = tickets.value.filter((t) => t.ticketName.trim())
+    try {
+      for (const t of ticketsToCreate) {
+        await createTicketInfo({
+          pmIdx: newPerformance.id,
+          ticketName: t.ticketName.trim(),
+          ticketType: t.ticketType,
+          ticketPrice: t.ticketType === 1 ? 0 : t.ticketPrice,
+          ticketMax: t.ticketMax,
+          ticketMin: t.ticketMin,
+        })
+      }
+    } catch (ticketErr: any) {
+      // 공연은 이미 생성됨 — 티켓 일부 실패 시 티켓 관리로 보내 마저 등록하게 한다
+      errorMessage.value =
+        ticketErr?.response?.data?.message ||
+        '공연은 등록됐지만 일부 티켓 생성에 실패했어요. 티켓 관리에서 확인해주세요.'
+      setTimeout(() => {
+        navigateTo(`/bookings/performance-management/tickets?id=${newPerformance.id}`)
+      }, 1800)
+      return
+    }
+
+    successMessage.value = ticketsToCreate.length
+      ? `공연과 티켓 ${ticketsToCreate.length}개가 등록되었습니다.`
+      : '공연이 등록되었습니다.'
     setTimeout(() => {
-      navigateTo('/bookings/performance-management/select')
+      navigateTo(
+        ticketsToCreate.length
+          ? `/bookings/performance-management/tickets?id=${newPerformance.id}`
+          : '/bookings/performance-management/select',
+      )
     }, 1500)
   } catch (error: any) {
     console.error('공연 등록 에러:', error)
@@ -677,6 +741,94 @@ const toggleCategory = (category: string) => {
           ></textarea>
         </section>
 
+        <!-- 티켓 섹션 (공연과 함께 등록) -->
+        <section class="form-section">
+          <h2 class="section-title">티켓</h2>
+          <p class="form-hint form-hint--normal ticket-section__desc">
+            공연과 함께 등록할 티켓이에요. 비워두면 나중에 티켓 관리에서 추가할 수 있어요.
+          </p>
+
+          <div class="ticket-builder">
+            <article v-for="(ticket, i) in tickets" :key="i" class="ticket-card">
+              <div class="ticket-card__head">
+                <span class="ticket-card__no">티켓 {{ i + 1 }}</span>
+                <button
+                  v-if="tickets.length > 1"
+                  type="button"
+                  class="ticket-card__remove"
+                  @click="removeTicket(i)"
+                >
+                  삭제
+                </button>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">티켓 종류</label>
+                <div class="type-options">
+                  <button
+                    v-for="t in ticketTypes"
+                    :key="t.value"
+                    type="button"
+                    class="type-option"
+                    :class="{ 'is-active': ticket.ticketType === t.value }"
+                    :disabled="t.disabled"
+                    @click="selectTicketType(i, t.value)"
+                  >
+                    <span class="type-option__label">{{ t.label }}</span>
+                    <span class="type-option__desc">{{ t.desc }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">티켓 이름</label>
+                <input
+                  v-model="ticket.ticketName"
+                  type="text"
+                  class="form-input"
+                  placeholder="최대 12글자까지 쓸 수 있어요 (ex. 일반 티켓)"
+                  maxlength="12"
+                />
+              </div>
+
+              <div class="ticket-card__row">
+                <div class="form-group">
+                  <label class="form-label">티켓 가격</label>
+                  <div class="input-suffix">
+                    <input
+                      v-model.number="ticket.ticketPrice"
+                      type="number"
+                      class="form-input"
+                      min="0"
+                      :disabled="ticket.ticketType === 1"
+                      :placeholder="ticket.ticketType === 1 ? '무료' : '0'"
+                    />
+                    <span class="suffix">원</span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">발행 매수</label>
+                  <div class="input-suffix">
+                    <input v-model.number="ticket.ticketMax" type="number" class="form-input" min="1" />
+                    <span class="suffix">장</span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">1인당 최소</label>
+                  <div class="input-suffix">
+                    <input v-model.number="ticket.ticketMin" type="number" class="form-input" min="1" />
+                    <span class="suffix">매</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <button type="button" class="btn-add-ticket" @click="addTicket">
+              + 티켓 추가
+            </button>
+          </div>
+        </section>
+
         <!-- 체크리스트 섹션 -->
         <section class="checklist-section">
           <h2 class="section-title">체크리스트</h2>
@@ -1005,6 +1157,123 @@ const toggleCategory = (category: string) => {
   justify-content: flex-end;
   gap: 12px;
   padding-top: 24px;
+}
+
+/* 티켓 빌더 (공연과 함께 등록) */
+.ticket-section__desc {
+  margin-bottom: 16px;
+}
+.ticket-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.ticket-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-subtle);
+}
+.ticket-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ticket-card__no {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+.ticket-card__remove {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+.ticket-card__remove:hover {
+  color: var(--color-danger);
+}
+.ticket-card__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+.type-options {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.type-option {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+}
+.type-option.is-active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-tint);
+}
+.type-option:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.type-option__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.type-option__desc {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.input-suffix {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.input-suffix .form-input {
+  padding-right: 36px;
+}
+.input-suffix .suffix {
+  position: absolute;
+  right: 14px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+.btn-add-ticket {
+  padding: 12px;
+  border: 1px dashed var(--color-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-tint);
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-add-ticket:hover {
+  background: #ede9fe;
+}
+
+@media (max-width: 600px) {
+  .ticket-card__row {
+    grid-template-columns: 1fr;
+  }
+  .type-options {
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 1024px) {
