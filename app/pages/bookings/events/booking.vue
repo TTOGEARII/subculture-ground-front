@@ -139,7 +139,7 @@ const handleConfirmBooking = async () => {
       </p>
 
       <div class="success-actions">
-        <NuxtLink to="/my-page" class="btn btn--primary">마이페이지 확인</NuxtLink>
+        <NuxtLink to="/bookings/my-page" class="btn btn--primary">마이페이지 확인</NuxtLink>
         <NuxtLink to="/bookings/events" class="btn btn--secondary">공연 목록으로</NuxtLink>
       </div>
     </div>

@@ -41,18 +41,18 @@ const formatDate = (dateStr: string) => {
 }
 
 const handleSelectPerformance = (performanceId: number) => {
-  navigateTo(`/performance-management?id=${performanceId}`)
+  navigateTo(`/bookings/performance-management?id=${performanceId}`)
 }
 
 const handleNewPerformance = () => {
-  navigateTo('/performance-management/create')
+  navigateTo('/bookings/performance-management/create')
 }
 </script>
 
 <template>
   <div class="performance-select-page">
     <div class="content-header">
-      <NuxtLink to="/my-page" class="back-button">
+      <NuxtLink to="/bookings/my-page" class="back-button">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>

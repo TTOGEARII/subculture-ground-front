@@ -22,16 +22,16 @@ const getPathWithId = (basePath: string) => {
 }
 
 const dashboardItem = computed(() => ({ 
-  path: getPathWithId('/performance-management'), 
+  path: getPathWithId('/bookings/performance-management'), 
   label: '대시보드', 
   icon: 'grid' 
 }))
 
 const otherMenuItems = computed(() => [
-  { path: getPathWithId('/performance-management/basic-info'), label: '공연 기본 정보', icon: 'document' },
-  { path: getPathWithId('/performance-management/tickets'), label: '티켓 관리', icon: 'tickets' },
-  { path: getPathWithId('/performance-management/reservations'), label: '예매자 관리', icon: 'users' },
-  { path: getPathWithId('/performance-management/qr-checkin'), label: 'QR 체크인', icon: 'qr' },
+  { path: getPathWithId('/bookings/performance-management/basic-info'), label: '공연 기본 정보', icon: 'document' },
+  { path: getPathWithId('/bookings/performance-management/tickets'), label: '티켓 관리', icon: 'tickets' },
+  { path: getPathWithId('/bookings/performance-management/reservations'), label: '예매자 관리', icon: 'users' },
+  { path: getPathWithId('/bookings/performance-management/qr-checkin'), label: 'QR 체크인', icon: 'qr' },
 ])
 
 // 공연이 있으면 모든 메뉴, 없으면 대시보드만 표시

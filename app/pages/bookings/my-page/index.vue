@@ -136,7 +136,7 @@ const formatPhone = (phone: string | null | undefined) => {
       <div class="my-events-section">
         <div class="my-events-head">
           <h2 class="section-title">내가 등록한 공연</h2>
-          <NuxtLink to="/performance-management/create" class="my-events-add">
+          <NuxtLink to="/bookings/performance-management/create" class="my-events-add">
             + 새 공연 등록
           </NuxtLink>
         </div>
@@ -147,7 +147,7 @@ const formatPhone = (phone: string | null | undefined) => {
 
         <div v-else-if="performances.length === 0" class="my-events-empty">
           아직 등록한 공연이 없어요.
-          <NuxtLink to="/performance-management/create" class="my-events-empty-link">
+          <NuxtLink to="/bookings/performance-management/create" class="my-events-empty-link">
             첫 공연을 등록해보세요 →
           </NuxtLink>
         </div>
@@ -156,7 +156,7 @@ const formatPhone = (phone: string | null | undefined) => {
           <NuxtLink
             v-for="event in performances.slice(0, 3)"
             :key="event.id"
-            :to="`/performance-management?id=${event.id}`"
+            :to="`/bookings/performance-management?id=${event.id}`"
             class="my-event-card"
           >
             <div class="my-event-poster">
@@ -193,7 +193,7 @@ const formatPhone = (phone: string | null | undefined) => {
 
         <NuxtLink
           v-if="performances.length > 3"
-          to="/performance-management/select"
+          to="/bookings/performance-management/select"
           class="section-more"
         >
           전체 {{ performances.length }}건 보기 →
@@ -206,7 +206,7 @@ const formatPhone = (phone: string | null | undefined) => {
           <h2 class="section-title">내 예매 내역</h2>
           <NuxtLink
             v-if="myReservations.length > 0"
-            to="/my-page/reservations"
+            to="/bookings/my-page/reservations"
             class="my-res-more"
           >
             전체 보기
@@ -242,7 +242,7 @@ const formatPhone = (phone: string | null | undefined) => {
       <div class="shortcuts-section">
         <h2 class="shortcuts-title">바로가기</h2>
         <div class="shortcuts-list">
-          <NuxtLink to="/my-page/reservations" class="shortcut-item">
+          <NuxtLink to="/bookings/my-page/reservations" class="shortcut-item">
             <span class="shortcut-text">내 예매내역</span>
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M7 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -251,7 +251,7 @@ const formatPhone = (phone: string | null | undefined) => {
           
           <div class="shortcut-divider"></div>
 
-          <NuxtLink to="/performance-management/select" class="shortcut-item">
+          <NuxtLink to="/bookings/performance-management/select" class="shortcut-item">
             <span class="shortcut-text">공연 준비하기</span>
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M7 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
