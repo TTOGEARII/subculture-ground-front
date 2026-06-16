@@ -1,5 +1,10 @@
-/* 디자인 토큰 — 라이트 테마 (폼/관리 화면 공통)
- * 하드코딩된 색·반경·그림자를 한 곳에서 관리한다. 값 변경은 여기서. */
+/* 디자인 토큰 — 단일 소스(single source of truth)
+ * 모든 색·반경·그림자를 이 파일에서 관리한다. 값 변경은 여기서만.
+ *
+ * 두 팔레트가 공존한다(의도적):
+ *   1) --color-*      : 폼/공연관리(admin) 화면 — 보라(#7c3aed) 라이트 테마
+ *   2) 소비자 토큰     : 예매/소개(consumer) 화면 — Airbnb 팔레트(#ff385c), DESIGN.md 기준
+ * 새 색을 하드코딩하지 말고 여기에 토큰을 먼저 추가한 뒤 var()로 참조한다. */
 :root {
   /* 브랜드 / 강조 */
   --color-primary: #7c3aed;
@@ -41,4 +46,21 @@
   /* 그림자 / 포커스 */
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05);
   --focus-ring: 0 0 0 3px rgba(124, 58, 237, 0.1);
+
+  /* ===== 소비자(예매/소개) 팔레트 — Airbnb (DESIGN.md 기준) =====
+   * 이전에는 index.css 의 .page 스코프에만 있어 페이지에선 못 썼다.
+   * :root 로 올려 전역에서 var() 참조 가능하게 한다. */
+  --primary:        #ff385c;
+  --primary-active: #e00b41;
+  --ink:            #222222;
+  --body-text:      #3f3f3f;
+  --muted:          #6a6a6a;
+  --muted-soft:     #929292;
+  --hairline:       #dddddd;
+  --hairline-soft:  #ebebeb;
+  --canvas:         #ffffff;
+  --surface-soft:   #f7f7f7;
+  --surface-strong: #f2f2f2;
+  --error:          #c13515;
+  --card-shadow:    rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px 0, rgba(0,0,0,0.1) 0 4px 8px 0;
 }

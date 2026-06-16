@@ -283,10 +283,16 @@ const formatPhone = (phone: string | null | undefined) => {
   background: #ffffff;
 }
 
+/* 데스크톱(웹앱)에서 모바일 퍼스트 리스트가 과하게 늘어나지 않도록 중앙 컬럼으로 제한.
+   전역 .main(max-width:1100)을 이 페이지에 한해 좁힌다. 모바일은 그대로 풀폭. */
+.mypage .main {
+  max-width: 720px;
+}
+
 .mypage-header {
   padding: 16px 20px 24px;
   background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .back-button {
@@ -296,14 +302,14 @@ const formatPhone = (phone: string | null | undefined) => {
   width: 40px;
   height: 40px;
   margin-bottom: 16px;
-  color: #374151;
+  color: var(--color-text-body);
   text-decoration: none;
   border-radius: 8px;
   transition: background-color 0.2s ease;
 }
 
 .back-button:hover {
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
 }
 
 .profile-section {
@@ -316,7 +322,7 @@ const formatPhone = (phone: string | null | undefined) => {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: #ff385c;
+  background: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -334,13 +340,13 @@ const formatPhone = (phone: string | null | undefined) => {
   margin: 0 0 4px;
   font-size: 20px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .profile-phone {
   margin: 0;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 /* 내가 등록한 공연 */
@@ -360,13 +366,13 @@ const formatPhone = (phone: string | null | undefined) => {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .my-events-add {
   font-size: 13px;
   font-weight: 600;
-  color: #ff385c;
+  color: var(--primary);
   text-decoration: none;
   white-space: nowrap;
 }
@@ -381,15 +387,15 @@ const formatPhone = (phone: string | null | undefined) => {
   align-items: center;
   gap: 8px;
   padding: 40px 20px;
-  background: #f9fafb;
-  border: 1px dashed #e5e7eb;
+  background: var(--color-surface-subtle);
+  border: 1px dashed var(--color-border);
   border-radius: 12px;
-  color: #9ca3af;
+  color: var(--color-text-faint);
   font-size: 14px;
 }
 
 .my-events-empty-link {
-  color: #ff385c;
+  color: var(--primary);
   font-weight: 600;
   text-decoration: none;
   font-size: 13px;
@@ -406,7 +412,7 @@ const formatPhone = (phone: string | null | undefined) => {
   align-items: center;
   gap: 12px;
   padding: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   background: #ffffff;
   text-decoration: none;
@@ -414,7 +420,7 @@ const formatPhone = (phone: string | null | undefined) => {
 }
 
 .my-event-card:hover {
-  border-color: #d1d5db;
+  border-color: var(--color-border-strong);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
@@ -424,7 +430,7 @@ const formatPhone = (phone: string | null | undefined) => {
   height: 64px;
   border-radius: 8px;
   overflow: hidden;
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
 }
 
 .my-event-poster img {
@@ -461,19 +467,19 @@ const formatPhone = (phone: string | null | undefined) => {
 
 .my-event-status.is-open {
   background: #fde8ec;
-  color: #ff385c;
+  color: var(--primary);
 }
 
 .my-event-status.is-closed {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
 }
 
 .my-event-name {
   margin: 2px 0 0;
   font-size: 15px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -482,13 +488,13 @@ const formatPhone = (phone: string | null | undefined) => {
 .my-event-meta {
   margin: 0;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .my-event-venue {
   margin: 0;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-text-faint);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -505,12 +511,12 @@ const formatPhone = (phone: string | null | undefined) => {
   text-align: center;
   font-size: 13px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-text-muted);
   text-decoration: none;
 }
 
 .section-more:hover {
-  color: #111827;
+  color: var(--color-text);
 }
 
 .my-res-head {
@@ -523,7 +529,7 @@ const formatPhone = (phone: string | null | undefined) => {
 .my-res-more {
   font-size: 13px;
   font-weight: 600;
-  color: #ff385c;
+  color: var(--primary);
   text-decoration: none;
 }
 
@@ -544,15 +550,15 @@ const formatPhone = (phone: string | null | undefined) => {
   align-items: center;
   gap: 8px;
   padding: 32px 20px;
-  background: #f9fafb;
-  border: 1px dashed #e5e7eb;
+  background: var(--color-surface-subtle);
+  border: 1px dashed var(--color-border);
   border-radius: 12px;
-  color: #9ca3af;
+  color: var(--color-text-faint);
   font-size: 14px;
 }
 
 .my-res-empty-link {
-  color: #ff385c;
+  color: var(--primary);
   font-weight: 600;
   text-decoration: none;
   font-size: 13px;
@@ -573,7 +579,7 @@ const formatPhone = (phone: string | null | undefined) => {
   justify-content: space-between;
   gap: 16px;
   padding: 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   background: #ffffff;
 }
@@ -602,7 +608,7 @@ const formatPhone = (phone: string | null | undefined) => {
 
 .my-res-status.is-paid {
   background: #fde8ec;
-  color: #ff385c;
+  color: var(--primary);
 }
 
 .my-res-status.is-checked {
@@ -611,15 +617,15 @@ const formatPhone = (phone: string | null | undefined) => {
 }
 
 .my-res-status.is-cancelled {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
 }
 
 .my-res-name {
   margin: 0;
   font-size: 15px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -628,13 +634,13 @@ const formatPhone = (phone: string | null | undefined) => {
 .my-res-meta {
   margin: 0;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .my-res-sub {
   margin: 0;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-text-faint);
 }
 
 .my-res-qr {
@@ -650,7 +656,7 @@ const formatPhone = (phone: string | null | undefined) => {
   margin: 0 0 16px;
   font-size: 18px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .shortcuts-list {
@@ -665,13 +671,13 @@ const formatPhone = (phone: string | null | undefined) => {
   padding: 16px 0;
   border: none;
   background: transparent;
-  color: #111827;
+  color: var(--color-text);
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
   text-align: left;
   text-decoration: none;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
   transition: background-color 0.2s ease;
 }
 
@@ -680,7 +686,7 @@ const formatPhone = (phone: string | null | undefined) => {
 }
 
 .shortcut-item:hover {
-  background: #f9fafb;
+  background: var(--color-surface-subtle);
 }
 
 .shortcut-text {
@@ -688,17 +694,17 @@ const formatPhone = (phone: string | null | undefined) => {
 }
 
 .shortcut-item svg {
-  color: #9ca3af;
+  color: var(--color-text-faint);
   flex-shrink: 0;
 }
 
 .shortcut-item:hover svg {
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .shortcut-divider {
   height: 1px;
-  background: #e5e7eb;
+  background: var(--color-border);
   margin: 8px 0;
 }
 

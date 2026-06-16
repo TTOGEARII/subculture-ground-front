@@ -56,15 +56,15 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  color: #6a6a6a;
+  color: var(--muted);
   font-size: 15px;
 }
 
 .spinner {
   width: 36px;
   height: 36px;
-  border: 3px solid #ebebeb;
-  border-top-color: #ff385c;
+  border: 3px solid var(--hairline-soft);
+  border-top-color: var(--primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -86,13 +86,13 @@ onMounted(async () => {
 .cb-error__msg {
   margin: 0;
   font-size: 15px;
-  color: #c13515;
+  color: var(--error);
 }
 
 .cb-error__link {
   font-size: 14px;
   font-weight: 600;
-  color: #ff385c;
+  color: var(--primary);
   text-decoration: none;
 }
 

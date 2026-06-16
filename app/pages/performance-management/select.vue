@@ -183,28 +183,28 @@ const handleNewPerformance = () => {
   height: 40px;
   border-radius: 8px;
   background: #ffffff;
-  border: 1px solid #e5e7eb;
-  color: #374151;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-body);
   transition: all 0.2s;
   flex-shrink: 0;
 }
 
 .back-button:hover {
-  background: #f9fafb;
-  border-color: #d1d5db;
+  background: var(--color-surface-subtle);
+  border-color: var(--color-border-strong);
 }
 
 .page-title {
   margin: 0;
   font-size: 28px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .page-subtitle {
   margin: 0;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .content-body {
@@ -219,7 +219,7 @@ const handleNewPerformance = () => {
 .btn--new-performance {
   width: 100%;
   padding: 20px;
-  background: #7c3aed;
+  background: var(--color-primary);
   color: #ffffff;
   border: none;
   border-radius: 12px;
@@ -234,14 +234,14 @@ const handleNewPerformance = () => {
 }
 
 .btn--new-performance:hover {
-  background: #6d28d9;
+  background: var(--color-primary-hover);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
 }
 
 .performances-section {
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 24px;
 }
@@ -257,14 +257,14 @@ const handleNewPerformance = () => {
   margin: 0;
   font-size: 20px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .btn--refresh {
   padding: 8px 16px;
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface-muted);
+  color: var(--color-text-body);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
@@ -273,14 +273,14 @@ const handleNewPerformance = () => {
 }
 
 .btn--refresh:hover {
-  background: #e5e7eb;
+  background: var(--color-border);
 }
 
 .loading-state,
 .empty-state {
   text-align: center;
   padding: 48px 24px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .empty-state svg {
@@ -294,7 +294,7 @@ const handleNewPerformance = () => {
 
 .empty-hint {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-text-faint);
 }
 
 .performances-grid {
@@ -307,7 +307,7 @@ const handleNewPerformance = () => {
   display: flex;
   flex-direction: column;
   padding: 16px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--color-border);
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s;
@@ -315,7 +315,7 @@ const handleNewPerformance = () => {
 }
 
 .performance-card:hover {
-  border-color: #7c3aed;
+  border-color: var(--color-primary);
   box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
   transform: translateY(-2px);
 }
@@ -325,7 +325,7 @@ const handleNewPerformance = () => {
   height: 180px;
   border-radius: 8px;
   overflow: hidden;
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
   margin-bottom: 12px;
 }
 
@@ -341,7 +341,7 @@ const handleNewPerformance = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
 }
 
 .performance-info {
@@ -362,7 +362,7 @@ const handleNewPerformance = () => {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text);
   flex: 1;
   line-height: 1.3;
 }
@@ -389,7 +389,7 @@ const handleNewPerformance = () => {
 .performance-artist {
   margin: 0;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .performance-details {
@@ -397,7 +397,7 @@ const handleNewPerformance = () => {
   flex-direction: column;
   gap: 8px;
   font-size: 13px;
-  color: #374151;
+  color: var(--color-text-body);
 }
 
 .detail-item {
@@ -407,7 +407,7 @@ const handleNewPerformance = () => {
 }
 
 .detail-item svg {
-  color: #9ca3af;
+  color: var(--color-text-faint);
   flex-shrink: 0;
 }
 
@@ -420,10 +420,10 @@ const handleNewPerformance = () => {
 
 .category-tag {
   padding: 4px 10px;
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
   border-radius: 12px;
   font-size: 12px;
-  color: #374151;
+  color: var(--color-text-body);
 }
 
 .performance-arrow {
@@ -432,13 +432,17 @@ const handleNewPerformance = () => {
   justify-content: center;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #e5e7eb;
-  color: #9ca3af;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-faint);
 }
 
 @media (max-width: 768px) {
   .performance-select-page {
     padding: 16px;
+  }
+
+  .page-title {
+    font-size: 22px;
   }
 
   .performances-grid {

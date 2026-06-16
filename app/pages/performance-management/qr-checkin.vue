@@ -240,33 +240,6 @@ const totalCount = computed(() => reservations.value.filter((r) => r.ticketStatu
   margin-bottom: 20px;
 }
 
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: var(--color-primary);
-  margin-bottom: 16px;
-}
-
-.separator {
-  color: var(--color-text-faint);
-}
-
-.page-title {
-  margin: 0 0 8px;
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.page-subtitle {
-  margin: 0;
-  font-size: 14px;
-  color: var(--color-text-muted);
-  line-height: 1.6;
-}
-
 .checkin-summary {
   margin-bottom: 20px;
   font-size: 15px;
@@ -298,7 +271,7 @@ const totalCount = computed(() => reservations.value.filter((r) => r.ticketStatu
   min-height: 280px;
   border-radius: var(--radius-md);
   overflow: hidden;
-  background: #111827;
+  background: var(--color-text);
 }
 
 .qr-reader.is-idle {
@@ -454,6 +427,12 @@ const totalCount = computed(() => reservations.value.filter((r) => r.ticketStatu
 @media (max-width: 900px) {
   .checkin-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 22px;
   }
 }
 </style>

@@ -64,14 +64,14 @@ onUnmounted(() => document.removeEventListener('keydown', handleKeydown))
 }
 
 .qr-thumb img {
-  border: 1px solid #ebebeb;
+  border: 1px solid var(--hairline-soft);
   border-radius: 8px;
   display: block;
 }
 
 .qr-thumb__label {
   font-size: 11px;
-  color: #929292;
+  color: var(--muted-soft);
 }
 
 .qr-thumb__hint {
@@ -114,14 +114,14 @@ onUnmounted(() => document.removeEventListener('keydown', handleKeydown))
   margin: 0;
   font-size: 15px;
   font-weight: 600;
-  color: #222222;
+  color: var(--ink);
 }
 
 .qr-overlay__close {
   padding: 10px 24px;
   border: none;
   border-radius: 10px;
-  background: #222222;
+  background: var(--ink);
   color: #ffffff;
   font-size: 14px;
   font-weight: 600;

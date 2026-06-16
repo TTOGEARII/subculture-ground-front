@@ -233,7 +233,7 @@ const formatDate = (dateStr: string) => {
 
 .breadcrumb {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin-bottom: 8px;
   display: flex;
   align-items: center;
@@ -241,25 +241,25 @@ const formatDate = (dateStr: string) => {
 }
 
 .breadcrumb-link {
-  color: #7c3aed;
+  color: var(--color-primary);
   text-decoration: none;
   transition: color 0.2s;
 }
 
 .breadcrumb-link:hover {
-  color: #6d28d9;
+  color: var(--color-primary-hover);
   text-decoration: underline;
 }
 
 .separator {
-  color: #9ca3af;
+  color: var(--color-text-faint);
 }
 
 .page-title {
   margin: 0;
   font-size: 32px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .content-body {
@@ -293,12 +293,12 @@ const formatDate = (dateStr: string) => {
 }
 
 .btn--secondary {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--color-surface-muted);
+  color: var(--color-text-body);
 }
 
 .btn--secondary:hover {
-  background: #e5e7eb;
+  background: var(--color-border);
 }
 
 .btn--primary {
@@ -317,13 +317,13 @@ const formatDate = (dateStr: string) => {
 
 .btn--outline {
   background: transparent;
-  border: 1px solid #e5e7eb;
-  color: #374151;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-body);
 }
 
 .btn--outline:hover {
-  background: #f9fafb;
-  border-color: #d1d5db;
+  background: var(--color-surface-subtle);
+  border-color: var(--color-border-strong);
 }
 
 .btn--danger-outline {
@@ -339,7 +339,7 @@ const formatDate = (dateStr: string) => {
 /* 공연 리스트 섹션 */
 .performances-section {
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 24px;
@@ -356,7 +356,7 @@ const formatDate = (dateStr: string) => {
 .empty-state {
   text-align: center;
   padding: 48px 24px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .empty-state svg {
@@ -370,7 +370,7 @@ const formatDate = (dateStr: string) => {
 
 .empty-hint {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-text-faint);
 }
 
 .performances-list {
@@ -383,14 +383,14 @@ const formatDate = (dateStr: string) => {
   display: flex;
   gap: 16px;
   padding: 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .performance-card:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  border-color: #d1d5db;
+  border-color: var(--color-border-strong);
 }
 
 .performance-image {
@@ -399,7 +399,7 @@ const formatDate = (dateStr: string) => {
   height: 120px;
   border-radius: 8px;
   overflow: hidden;
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
 }
 
 .performance-image .image {
@@ -414,7 +414,7 @@ const formatDate = (dateStr: string) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
 }
 
 .performance-info {
@@ -435,7 +435,7 @@ const formatDate = (dateStr: string) => {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text);
   flex: 1;
 }
 
@@ -460,7 +460,7 @@ const formatDate = (dateStr: string) => {
 .performance-artist {
   margin: 0;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .performance-details {
@@ -468,7 +468,7 @@ const formatDate = (dateStr: string) => {
   flex-wrap: wrap;
   gap: 16px;
   font-size: 13px;
-  color: #374151;
+  color: var(--color-text-body);
 }
 
 .detail-item {
@@ -478,7 +478,7 @@ const formatDate = (dateStr: string) => {
 }
 
 .detail-item svg {
-  color: #9ca3af;
+  color: var(--color-text-faint);
   flex-shrink: 0;
 }
 
@@ -491,10 +491,10 @@ const formatDate = (dateStr: string) => {
 
 .category-tag {
   padding: 4px 10px;
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
   border-radius: 12px;
   font-size: 12px;
-  color: #374151;
+  color: var(--color-text-body);
 }
 
 .performance-actions {
@@ -513,7 +513,7 @@ const formatDate = (dateStr: string) => {
 
 .performance-info-card {
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 24px;
 }
@@ -530,7 +530,7 @@ const formatDate = (dateStr: string) => {
   height: 120px;
   border-radius: 12px;
   overflow: hidden;
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
 }
 
 .performance-image-large .image {
@@ -557,7 +557,7 @@ const formatDate = (dateStr: string) => {
   margin: 0;
   font-size: 24px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text);
   flex: 1;
 }
 
@@ -566,7 +566,7 @@ const formatDate = (dateStr: string) => {
   flex-wrap: wrap;
   gap: 16px;
   font-size: 14px;
-  color: #374151;
+  color: var(--color-text-body);
   margin-top: 4px;
 }
 
@@ -577,7 +577,7 @@ const formatDate = (dateStr: string) => {
 }
 
 .meta-item svg {
-  color: #9ca3af;
+  color: var(--color-text-faint);
   flex-shrink: 0;
 }
 
@@ -585,7 +585,7 @@ const formatDate = (dateStr: string) => {
   display: flex;
   gap: 12px;
   padding-top: 20px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-border);
 }
 
 .card-actions .btn {
@@ -601,7 +601,7 @@ const formatDate = (dateStr: string) => {
 /* 빠른 액션 */
 .quick-actions {
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 24px;
 }
@@ -610,7 +610,7 @@ const formatDate = (dateStr: string) => {
   margin: 0 0 20px;
   font-size: 18px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .actions-grid {
@@ -626,18 +626,18 @@ const formatDate = (dateStr: string) => {
   justify-content: center;
   gap: 12px;
   padding: 24px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--color-border);
   border-radius: 12px;
   text-decoration: none;
-  color: #374151;
+  color: var(--color-text-body);
   transition: all 0.2s;
   background: #ffffff;
 }
 
 .action-card:hover {
-  border-color: #7c3aed;
+  border-color: var(--color-primary);
   background: #f5f3ff;
-  color: #7c3aed;
+  color: var(--color-primary);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
 }
@@ -654,10 +654,14 @@ const formatDate = (dateStr: string) => {
 .loading-state {
   text-align: center;
   padding: 48px 24px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 @media (max-width: 768px) {
+  .page-title {
+    font-size: 24px;
+  }
+
   .card-header {
     flex-direction: column;
   }
@@ -667,8 +671,45 @@ const formatDate = (dateStr: string) => {
     height: 200px;
   }
 
+  .performance-title-row {
+    flex-wrap: wrap;
+  }
+
+  .card-actions {
+    flex-wrap: wrap;
+  }
+
   .actions-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .performance-card {
+    flex-direction: column;
+  }
+
+  .performance-image {
+    width: 100%;
+    height: 180px;
+  }
+
+  .performance-header-info {
+    flex-wrap: wrap;
+  }
+
+  .performance-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .performance-actions .btn {
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .action-buttons {
+    flex-wrap: wrap;
   }
 }
 </style>

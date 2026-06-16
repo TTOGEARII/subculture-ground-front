@@ -159,27 +159,27 @@ const formatEventDate = (dateString: string) => {
   justify-content: center;
   width: 40px;
   height: 40px;
-  color: #374151;
+  color: var(--color-text-body);
   border-radius: 8px;
   text-decoration: none;
 }
 
 .back-button:hover {
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
 }
 
 .page-title {
   margin: 0;
   font-size: 22px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .status-tabs {
   display: flex;
   gap: 4px;
   margin-bottom: 20px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
   overflow-x: auto;
 }
 
@@ -190,7 +190,7 @@ const formatEventDate = (dateString: string) => {
   padding: 10px 14px;
   border: none;
   background: none;
-  color: #6b7280;
+  color: var(--color-text-muted);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -200,8 +200,8 @@ const formatEventDate = (dateString: string) => {
 }
 
 .status-tab.is-active {
-  color: #ff385c;
-  border-bottom-color: #ff385c;
+  color: var(--primary);
+  border-bottom-color: var(--primary);
 }
 
 .tab-count {
@@ -212,9 +212,9 @@ const formatEventDate = (dateString: string) => {
   height: 18px;
   padding: 0 5px;
   border-radius: 9px;
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
   font-size: 11px;
-  color: #374151;
+  color: var(--color-text-body);
 }
 
 .res-empty {
@@ -223,15 +223,15 @@ const formatEventDate = (dateString: string) => {
   align-items: center;
   gap: 8px;
   padding: 48px 20px;
-  background: #f9fafb;
-  border: 1px dashed #e5e7eb;
+  background: var(--color-surface-subtle);
+  border: 1px dashed var(--color-border);
   border-radius: 12px;
-  color: #9ca3af;
+  color: var(--color-text-faint);
   font-size: 14px;
 }
 
 .res-empty-link {
-  color: #ff385c;
+  color: var(--primary);
   font-weight: 600;
   text-decoration: none;
   font-size: 13px;
@@ -252,7 +252,7 @@ const formatEventDate = (dateString: string) => {
   justify-content: space-between;
   gap: 16px;
   padding: 18px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   background: #ffffff;
 }
@@ -281,7 +281,7 @@ const formatEventDate = (dateString: string) => {
 
 .res-status.is-paid {
   background: #fde8ec;
-  color: #ff385c;
+  color: var(--primary);
 }
 
 .res-status.is-checked {
@@ -290,39 +290,39 @@ const formatEventDate = (dateString: string) => {
 }
 
 .res-status.is-cancelled {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
 }
 
 .res-name {
   margin: 0;
   font-size: 16px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .res-meta {
   margin: 0;
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .res-sub {
   margin: 0;
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--color-text-faint);
 }
 
 .res-link {
   margin-top: 4px;
   font-size: 12px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-text-muted);
   text-decoration: none;
 }
 
 .res-link:hover {
-  color: #111827;
+  color: var(--color-text);
 }
 
 .res-qr {

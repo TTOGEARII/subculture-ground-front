@@ -2,6 +2,34 @@
  * 두 페이지에서 동일하던 폼 컨트롤만 추출. 페이지별로 값이 다른 셸/레이아웃은
  * 각 페이지 <style scoped>에 남겨둔다. (tokens.css 의존) */
 
+/* ===== 공연관리 페이지 공통 헤더 chrome =====
+ * tickets / reservations / qr-checkin 가 동일하게 쓰던 breadcrumb·타이틀을 추출.
+ * 페이지별로 값이 다른 곳(대시보드 32px·회색, basic-info 기본 여백)은
+ * 각 페이지 scoped 정의가 그대로 우선(override)하므로 영향 없다. */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--color-primary);
+  margin-bottom: 16px;
+}
+.breadcrumb .separator {
+  color: var(--color-text-faint);
+}
+.page-title {
+  margin: 0 0 8px;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+.page-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
 /* 알림 */
 .alert {
   padding: 12px 16px;
@@ -361,7 +389,7 @@
   padding: 0;
   max-height: 360px;
   overflow-y: auto;
-  border: 1px solid #ebebeb;
+  border: 1px solid var(--hairline-soft);
   border-radius: 10px;
 }
 .address-result {
@@ -379,7 +407,7 @@
 .address-result__name {
   font-size: 15px;
   font-weight: 600;
-  color: #222222;
+  color: var(--ink);
 }
 .address-result__addr {
   margin-top: 4px;

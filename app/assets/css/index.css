@@ -2,41 +2,25 @@
 @import './tokens.css';
 @import './components.css';
 
-/* === Airbnb Design System ===
-   Primary (Rausch): #ff385c  |  Canvas: #ffffff  |  Ink: #222222
-*/
+/* ===== 반응형 브레이크포인트 컨벤션 =====
+ * CSS @media 는 변수를 못 쓰므로 값으로 쓰되, 새 코드는 아래 3단계를 기준으로 한다.
+ * 기존 페이지에 흩어진 1회성 값(860/900/980/520 …)은 손대면 전환 지점이 바뀌어
+ * 화면이 달라지므로 유지하고, 손볼 때 이 스케일로 점진 수렴시킨다.
+ *   모바일  : max-width: 480px   (1열, 풀폭)
+ *   태블릿  : max-width: 768px   (2열 → 1열, 사이드바 접힘)
+ *   데스크톱: max-width: 1024px  (다열 → 2열)
+ */
+
+/* === Airbnb Design System (소비자 화면) ===
+   색 토큰은 tokens.css(:root) 단일 소스에서 정의한다.
+   여기선 소비자 페이지 셸의 레이아웃 속성만 둔다. */
 
 .page,
 .events-page,
 .event-detail-page {
-  /* Airbnb tokens */
-  --primary:        #ff385c;
-  --primary-active: #e00b41;
-  --ink:            #222222;
-  --body-text:      #3f3f3f;
-  --muted:          #6a6a6a;
-  --muted-soft:     #929292;
-  --hairline:       #dddddd;
-  --hairline-soft:  #ebebeb;
-  --canvas:         #ffffff;
-  --surface-soft:   #f7f7f7;
-  --surface-strong: #f2f2f2;
-  --error:          #c13515;
-  --card-shadow:    rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px 0, rgba(0,0,0,0.1) 0 4px 8px 0;
-
-  /* legacy aliases kept so templates continue to compile */
-  --bg:      #ffffff;
-  --text:    #222222;
-  --muted-2: #929292;
-  --border:  #dddddd;
-  --accent:  #ff385c;
-  --accent2: #ff385c;
-  --panel:   #f7f7f7;
-  --shadow:  rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px 0, rgba(0,0,0,0.1) 0 4px 8px 0;
-
   min-height: 100vh;
-  background: #ffffff;
-  color: #222222;
+  background: var(--canvas);
+  color: var(--ink);
   font-family: Circular, -apple-system, system-ui, Roboto, 'Helvetica Neue', sans-serif;
 }
 
@@ -438,10 +422,9 @@
   justify-content: space-between;
   padding: 0 24px;
   height: 80px;
-  /* --canvas/--hairline은 .page 스코프에서만 정의되어 레이아웃 헤더에선 비어
-     투명해진다. 흰 배경을 보장하는 폴백 + 흰 본문과 구분되는 미묘한 그림자. */
-  border-bottom: 1px solid var(--hairline, #ebebeb);
-  background: var(--canvas, #ffffff);
+  /* 흰 본문과 구분되는 얇은 경계 + 미묘한 그림자. (토큰은 이제 :root 전역) */
+  border-bottom: 1px solid var(--hairline-soft);
+  background: var(--canvas);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
@@ -983,6 +966,16 @@
 }
 
 @media (max-width: 720px) {
+  .header {
+    padding: 0 16px;
+    height: 64px;
+  }
+
+  .brand {
+    font-size: 16px;
+    gap: 8px;
+  }
+
   .nav {
     gap: 2px;
   }
@@ -1019,5 +1012,29 @@
 
   .events-grid {
     grid-template-columns: 1fr;
+  }
+
+  .main {
+    padding: 20px 16px 48px;
+  }
+
+  .events-page .main,
+  .event-detail-page .main {
+    padding: 20px 16px 48px;
+  }
+
+  .detail-sidebar {
+    position: static;
+    top: auto;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .brand__text {
+    display: none;
   }
 }

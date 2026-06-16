@@ -1023,5 +1023,34 @@ const toggleCategory = (category: string) => {
     flex-direction: column;
     align-items: flex-start;
   }
+
+  .page-title {
+    font-size: 22px;
+  }
+
+  .form-section,
+  .checklist-section,
+  .notes-section {
+    padding: 20px 16px;
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+  }
+
+  /* 날짜·시간·러닝타임이 한 줄에 다 들어가 넘치므로 줄바꿈 허용 */
+  .date-time-group {
+    flex-wrap: wrap;
+  }
+
+  .date-input-wrapper,
+  .time-input-wrapper,
+  .running-time-wrapper {
+    flex: 1 1 140px;
+  }
 }
 </style>

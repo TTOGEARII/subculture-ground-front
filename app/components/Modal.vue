@@ -99,7 +99,7 @@ const sizeClasses = {
 
 .modal-container {
   background: #ffffff;
-  border: 1px solid #dddddd;
+  border: 1px solid var(--hairline);
   border-radius: 14px;
   width: 100%;
   max-height: 90vh;
@@ -116,20 +116,20 @@ const sizeClasses = {
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid #ebebeb;
+  border-bottom: 1px solid var(--hairline-soft);
 }
 
 .modal-title {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
-  color: #222222;
+  color: var(--ink);
 }
 
 .modal-close {
   background: none;
   border: none;
-  color: #6a6a6a;
+  color: var(--muted);
   cursor: pointer;
   padding: 6px;
   display: flex;
@@ -141,8 +141,8 @@ const sizeClasses = {
 }
 
 .modal-close:hover {
-  background: #f2f2f2;
-  color: #222222;
+  background: var(--surface-strong);
+  color: var(--ink);
 }
 
 .modal-body {
@@ -153,7 +153,7 @@ const sizeClasses = {
   display: flex;
   gap: 12px;
   padding: 20px 24px;
-  border-top: 1px solid #ebebeb;
+  border-top: 1px solid var(--hairline-soft);
 }
 
 .modal-enter-active,
