@@ -5,20 +5,12 @@ import { useApi } from '../../../composables/useUtil'
 import { useKakaoMap, type KakaoPlace } from '../../../composables/useKakaoMap'
 
 definePageMeta({
-  layout: 'performance-management',
+  layout: 'bookings',
 })
 
 const { isAuthenticated, user, fetchProfile } = useAuth()
-const { createPerformance, updatePerformance, getPerformanceById } = usePerformances()
+const { createPerformance } = usePerformances()
 const { loadSdk, searchPlaces } = useKakaoMap()
-
-const route = useRoute()
-const performanceId = computed(() => {
-  const id = route.query.id as string | undefined
-  return id ? Number(id) : null
-})
-
-const isEditMode = computed(() => performanceId.value !== null)
 
 // 폼 데이터
 const formData = ref({
@@ -63,31 +55,6 @@ const errorMessage = ref('')
 const successMessage = ref('')
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
-// 날짜 포맷팅 (YYYY-MM-DD)
-const formatDateForInput = (date: string | Date | null): string => {
-  if (!date) return ''
-  const d = typeof date === 'string' ? new Date(date) : date
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-// 시간 포맷팅 (HH:mm)
-const formatTimeForInput = (time: string | null): string => {
-  if (!time) return ''
-  // "01:30 AM" 형식을 "01:30" 형식으로 변환
-  if (time.includes('AM') || time.includes('PM')) {
-    const [timePart = '', period] = time.split(' ')
-    const [hours = '00', minutes = '00'] = timePart.split(':')
-    let hour24 = Number(hours)
-    if (period === 'PM' && hour24 !== 12) hour24 += 12
-    if (period === 'AM' && hour24 === 12) hour24 = 0
-    return `${String(hour24).padStart(2, '0')}:${minutes}`
-  }
-  return time
-}
-
 // 시간 표시 포맷팅 (HH:mm AM/PM)
 const formatTimeForDisplay = (time: string): string => {
   if (!time) return ''
@@ -107,222 +74,12 @@ onMounted(async () => {
   if (!user.value) {
     await fetchProfile()
   }
-
-  // 등록 모드인 경우 create 페이지로 리다이렉트
-  if (!isEditMode.value) {
-    await navigateTo('/performance-management/create')
-    return
-  }
-
-  // 수정 모드인 경우 기존 데이터 로드
-  if (isEditMode.value && performanceId.value) {
-    try {
-      const performance = await getPerformanceById(performanceId.value)
-      if (performance) {
-        formData.value.performanceName = performance.name
-        formData.value.performanceArtist = performance.artist
-        formData.value.performanceVenue = performance.venue
-        formData.value.performanceDate = formatDateForInput(performance.date)
-        formData.value.performanceTime = formatTimeForInput(performance.time)
-        // 카테고리 설정
-        if (performance.category && Array.isArray(performance.category)) {
-          formData.value.performanceCategory = performance.category
-          selectedCategories.value = performance.category
-        }
-        // 이미지와 상세 내용 설정
-        if (performance.image) {
-          formData.value.performanceImagePreview = performance.image
-        }
-        if (performance.description) {
-          formData.value.performanceDescription = performance.description
-        }
-        // 상세주소 / 좌표 로드 → 기존 위치 지도 표시
-        if (performance.address) {
-          formData.value.detailedAddress = performance.address
-        }
-        if (performance.lat != null && performance.lng != null) {
-          selectedPlace.value = {
-            name: performance.venue,
-            address: performance.address || '',
-            lat: performance.lat,
-            lng: performance.lng,
-          }
-          await nextTick()
-          await renderMap()
-        }
-      }
-    } catch (error) {
-      console.error('공연 정보 로드 실패:', error)
-      errorMessage.value = '공연 정보를 불러오는데 실패했습니다.'
-    }
-  }
 })
 
 useSeoMeta({
-  title: isEditMode.value ? '공연 기본정보 수정 - Subculture Ground' : '공연 기본정보 등록 - Subculture Ground',
-  description: '공연 기본정보를 등록하거나 수정합니다.',
+  title: '새 공연 등록 - Subculture Ground',
+  description: '새 공연을 등록합니다.',
 })
-
-const handleSubmit = async () => {
-  // 유효성 검사
-  if (!formData.value.performanceName.trim()) {
-    errorMessage.value = '공연 이름을 입력해주세요.'
-    return
-  }
-  if (!formData.value.performanceArtist.trim()) {
-    errorMessage.value = '아티스트를 입력해주세요.'
-    return
-  }
-  if (!formData.value.performanceVenue.trim()) {
-    errorMessage.value = '공연 장소를 입력해주세요.'
-    return
-  }
-  
-  // 카테고리 배열을 JSON 문자열로 변환
-  formData.value.performanceCategory = selectedCategories.value
-  if (!formData.value.performanceDate) {
-    errorMessage.value = '공연 날짜를 선택해주세요.'
-    return
-  }
-  if (!formData.value.performanceTime) {
-    errorMessage.value = '공연 시간을 선택해주세요.'
-    return
-  }
-  if (!formData.value.performanceImage && !formData.value.performanceImagePreview) {
-    errorMessage.value = '공연 포스터를 업로드해주세요.'
-    return
-  }
-  if (!formData.value.performanceDescription.trim()) {
-    errorMessage.value = '공연 상세 내용을 입력해주세요.'
-    return
-  }
-
-  isLoading.value = true
-  isUploading.value = false
-  errorMessage.value = ''
-  successMessage.value = ''
-
-  try {
-    // 이미지 업로드 처리
-    let imageUrl = formData.value.performanceImagePreview
-
-    // 새 이미지가 업로드된 경우
-    if (formData.value.performanceImage) {
-      isUploading.value = true
-      imageUrl = await uploadImage(formData.value.performanceImage)
-      isUploading.value = false
-    }
-
-    const performanceData = {
-      performanceName: formData.value.performanceName.trim(),
-      performanceArtist: formData.value.performanceArtist.trim(),
-      performanceVenue: formData.value.performanceVenue.trim(),
-      performanceAddress: formData.value.detailedAddress.trim() || null,
-      performanceLat: selectedPlace.value?.lat,
-      performanceLng: selectedPlace.value?.lng,
-      performanceDate: formData.value.performanceDate,
-      performanceTime: formatTimeForDisplay(formData.value.performanceTime),
-      performanceCategory: JSON.stringify(formData.value.performanceCategory),
-      performanceImage: imageUrl,
-      performanceDescription: formData.value.performanceDescription.trim(),
-    }
-
-    // 수정 모드만 처리 (등록 모드는 create.vue에서 처리)
-    if (isEditMode.value && performanceId.value) {
-      await updatePerformance(performanceId.value, performanceData)
-      successMessage.value = '공연 정보가 수정되었습니다.'
-      setTimeout(() => {
-        navigateTo(`/performance-management?id=${performanceId.value}`)
-      }, 1500)
-    }
-  } catch (error: any) {
-    console.error('공연 등록/수정 에러:', error)
-    errorMessage.value =
-      error?.response?.data?.message ||
-      error?.message ||
-      '공연 등록 중 오류가 발생했습니다.'
-  } finally {
-    isLoading.value = false
-    isUploading.value = false
-  }
-}
-
-const handleResetRunningTime = () => {
-  formData.value.runningTime = ''
-}
-
-// ===== 공연장 주소 검색 (카카오맵) =====
-const showAddressModal = ref(false)
-const addressKeyword = ref('')
-const addressResults = ref<KakaoPlace[]>([])
-const isSearchingAddress = ref(false)
-const addressSearchError = ref('')
-const hasSearchedAddress = ref(false)
-
-// 지도
-const mapContainer = ref<HTMLElement | null>(null)
-const selectedPlace = ref<{ name: string; address: string; lat: number; lng: number } | null>(null)
-let kakaoMap: any = null
-let kakaoMarker: any = null
-
-const handleFindAddress = () => {
-  addressKeyword.value = formData.value.performanceVenue || ''
-  addressResults.value = []
-  hasSearchedAddress.value = false
-  addressSearchError.value = ''
-  showAddressModal.value = true
-}
-
-const handleSearchPlaces = async () => {
-  const keyword = addressKeyword.value.trim()
-  if (!keyword) {
-    addressSearchError.value = '공연장 이름을 입력해주세요.'
-    return
-  }
-  isSearchingAddress.value = true
-  addressSearchError.value = ''
-  try {
-    addressResults.value = await searchPlaces(keyword)
-    hasSearchedAddress.value = true
-  } catch (error: any) {
-    addressSearchError.value = error?.message || '검색 중 오류가 발생했습니다.'
-  } finally {
-    isSearchingAddress.value = false
-  }
-}
-
-const handleSelectPlace = async (place: KakaoPlace) => {
-  formData.value.performanceVenue = place.place_name
-  formData.value.detailedAddress = place.road_address_name || place.address_name
-  selectedPlace.value = {
-    name: place.place_name,
-    address: place.road_address_name || place.address_name,
-    lat: Number(place.y),
-    lng: Number(place.x),
-  }
-  showAddressModal.value = false
-  await nextTick()
-  await renderMap()
-}
-
-const renderMap = async () => {
-  if (!selectedPlace.value || !mapContainer.value) return
-  try {
-    const kakao = await loadSdk()
-    const position = new kakao.maps.LatLng(selectedPlace.value.lat, selectedPlace.value.lng)
-    if (!kakaoMap) {
-      kakaoMap = new kakao.maps.Map(mapContainer.value, { center: position, level: 3 })
-      kakaoMarker = new kakao.maps.Marker({ position })
-      kakaoMarker.setMap(kakaoMap)
-    } else {
-      kakaoMap.relayout()
-      kakaoMap.setCenter(position)
-      kakaoMarker.setPosition(position)
-    }
-  } catch (error) {
-    console.error('지도 렌더링 실패:', error)
-  }
-}
 
 // 파일 선택 핸들러
 const handleFileSelect = (event: Event) => {
@@ -415,6 +172,165 @@ const uploadImage = async (file: File): Promise<string> => {
   }
 }
 
+const handleSubmit = async () => {
+  // 유효성 검사
+  if (!formData.value.performanceName.trim()) {
+    errorMessage.value = '공연 이름을 입력해주세요.'
+    return
+  }
+  if (!formData.value.performanceArtist.trim()) {
+    errorMessage.value = '아티스트를 입력해주세요.'
+    return
+  }
+  if (!formData.value.performanceVenue.trim()) {
+    errorMessage.value = '공연 장소를 입력해주세요.'
+    return
+  }
+  
+  // 카테고리 배열을 JSON 문자열로 변환
+  formData.value.performanceCategory = selectedCategories.value
+  if (!formData.value.performanceDate) {
+    errorMessage.value = '공연 날짜를 선택해주세요.'
+    return
+  }
+  if (!formData.value.performanceTime) {
+    errorMessage.value = '공연 시간을 선택해주세요.'
+    return
+  }
+  if (!formData.value.performanceImage && !formData.value.performanceImagePreview) {
+    errorMessage.value = '공연 포스터를 업로드해주세요.'
+    return
+  }
+  if (!formData.value.performanceDescription.trim()) {
+    errorMessage.value = '공연 상세 내용을 입력해주세요.'
+    return
+  }
+
+  isLoading.value = true
+  isUploading.value = false
+  errorMessage.value = ''
+  successMessage.value = ''
+
+  try {
+    // 이미지 업로드 처리
+    let imageUrl = formData.value.performanceImagePreview
+
+    // 새 이미지가 업로드된 경우
+    if (formData.value.performanceImage) {
+      isUploading.value = true
+      imageUrl = await uploadImage(formData.value.performanceImage)
+      isUploading.value = false
+    }
+
+    const performanceData = {
+      performanceName: formData.value.performanceName.trim(),
+      performanceArtist: formData.value.performanceArtist.trim(),
+      performanceVenue: formData.value.performanceVenue.trim(),
+      performanceAddress: formData.value.detailedAddress.trim() || null,
+      performanceLat: selectedPlace.value?.lat,
+      performanceLng: selectedPlace.value?.lng,
+      performanceDate: formData.value.performanceDate,
+      performanceTime: formatTimeForDisplay(formData.value.performanceTime),
+      performanceCategory: JSON.stringify(formData.value.performanceCategory),
+      performanceImage: imageUrl,
+      performanceDescription: formData.value.performanceDescription.trim(),
+    }
+
+    const newPerformance = await createPerformance(performanceData)
+    successMessage.value = '공연이 등록되었습니다.'
+    // 선택 페이지로 이동
+    setTimeout(() => {
+      navigateTo('/bookings/performance-management/select')
+    }, 1500)
+  } catch (error: any) {
+    console.error('공연 등록 에러:', error)
+    errorMessage.value =
+      error?.response?.data?.message ||
+      error?.message ||
+      '공연 등록 중 오류가 발생했습니다.'
+  } finally {
+    isLoading.value = false
+    isUploading.value = false
+  }
+}
+
+const handleResetRunningTime = () => {
+  formData.value.runningTime = ''
+}
+
+// ===== 공연장 주소 검색 (카카오맵) =====
+const showAddressModal = ref(false)
+const addressKeyword = ref('')
+const addressResults = ref<KakaoPlace[]>([])
+const isSearchingAddress = ref(false)
+const addressSearchError = ref('')
+const hasSearchedAddress = ref(false)
+
+// 지도
+const mapContainer = ref<HTMLElement | null>(null)
+const selectedPlace = ref<{ name: string; address: string; lat: number; lng: number } | null>(null)
+let kakaoMap: any = null
+let kakaoMarker: any = null
+
+const handleFindAddress = () => {
+  addressKeyword.value = formData.value.performanceVenue || ''
+  addressResults.value = []
+  hasSearchedAddress.value = false
+  addressSearchError.value = ''
+  showAddressModal.value = true
+}
+
+const handleSearchPlaces = async () => {
+  const keyword = addressKeyword.value.trim()
+  if (!keyword) {
+    addressSearchError.value = '공연장 이름을 입력해주세요.'
+    return
+  }
+  isSearchingAddress.value = true
+  addressSearchError.value = ''
+  try {
+    addressResults.value = await searchPlaces(keyword)
+    hasSearchedAddress.value = true
+  } catch (error: any) {
+    addressSearchError.value = error?.message || '검색 중 오류가 발생했습니다.'
+  } finally {
+    isSearchingAddress.value = false
+  }
+}
+
+const handleSelectPlace = async (place: KakaoPlace) => {
+  formData.value.performanceVenue = place.place_name
+  formData.value.detailedAddress = place.road_address_name || place.address_name
+  selectedPlace.value = {
+    name: place.place_name,
+    address: place.road_address_name || place.address_name,
+    lat: Number(place.y),
+    lng: Number(place.x),
+  }
+  showAddressModal.value = false
+  await nextTick()
+  await renderMap()
+}
+
+const renderMap = async () => {
+  if (!selectedPlace.value || !mapContainer.value) return
+  try {
+    const kakao = await loadSdk()
+    const position = new kakao.maps.LatLng(selectedPlace.value.lat, selectedPlace.value.lng)
+    if (!kakaoMap) {
+      kakaoMap = new kakao.maps.Map(mapContainer.value, { center: position, level: 3 })
+      kakaoMarker = new kakao.maps.Marker({ position })
+      kakaoMarker.setMap(kakaoMap)
+    } else {
+      kakaoMap.relayout()
+      kakaoMap.setCenter(position)
+      kakaoMarker.setPosition(position)
+    }
+  } catch (error) {
+    console.error('지도 렌더링 실패:', error)
+  }
+}
+
 const toggleCategory = (category: string) => {
   const index = selectedCategories.value.indexOf(category)
   if (index > -1) {
@@ -426,17 +342,17 @@ const toggleCategory = (category: string) => {
 </script>
 
 <template>
-  <div class="basic-info-page">
+  <div class="performance-create-page">
     <div class="content-header">
-      <div class="breadcrumb">
-        <span>공연공연</span>
-        <span class="separator">/</span>
-        <span>공연 기본 정보</span>
+      <NuxtLink to="/bookings/performance-management/select" class="back-button">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </NuxtLink>
+      <div>
+        <h1 class="page-title">새 공연 등록</h1>
+        <p class="page-subtitle">공연 정보를 입력하고 등록하세요.</p>
       </div>
-      <h1 class="page-title">공연 기본정보</h1>
-      <p class="page-subtitle">
-        공연 기본정보는 공연 등록 이후에는 수정할 수 없어요
-      </p>
     </div>
 
     <div class="content-body">
@@ -449,208 +365,208 @@ const toggleCategory = (category: string) => {
           {{ successMessage }}
         </div>
 
-        <div class="form-grid">
-          <!-- 왼쪽 컬럼 -->
-          <div class="form-column">
-            <!-- 공연 이름 -->
-            <div class="form-group">
-              <label for="performanceName" class="form-label">공연 이름</label>
-              <input
-                id="performanceName"
-                v-model="formData.performanceName"
-                type="text"
-                class="form-input"
-                placeholder="공연 이름을 입력해주세요"
-                maxlength="255"
-                required
-              />
-            </div>
-
-            <!-- 아티스트 -->
-            <div class="form-group">
-              <label for="performanceArtist" class="form-label">
-                아티스트 <span class="required">*</span>
-              </label>
-              <input
-                id="performanceArtist"
-                v-model="formData.performanceArtist"
-                type="text"
-                class="form-input"
-                placeholder="아티스트 이름을 입력해주세요"
-                maxlength="255"
-                required
-              />
-            </div>
-
-            <!-- 공연 날짜와 시간 -->
-            <div class="form-group">
-              <label for="performanceDate" class="form-label">공연 날짜</label>
-              <div class="date-time-group">
-                <div class="date-input-wrapper">
-                  <input
-                    id="performanceDate"
-                    v-model="formData.performanceDate"
-                    type="date"
-                    class="form-input form-input--date"
-                    required
-                  />
-                  <svg
-                    class="input-icon"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M6 2v2M14 2v2M3 6h14M4 4h12a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z"
-                      stroke="currentColor"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                </div>
-                <div class="time-input-wrapper">
-                  <input
-                    id="performanceTime"
-                    v-model="formData.performanceTime"
-                    type="time"
-                    class="form-input form-input--time"
-                    required
-                  />
-                  <svg
-                    class="input-icon"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M10 5v5l3 2M10 19a9 9 0 100-18 9 9 0 000 18z"
-                      stroke="currentColor"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            <!-- 관람 시간 -->
-            <div class="form-group">
-              <label for="runningTime" class="form-label">관람 시간</label>
-              <div class="running-time-group">
-                <input
-                  id="runningTime"
-                  v-model.number="formData.runningTime"
-                  type="number"
-                  class="form-input form-input--running-time"
-                  placeholder="160"
-                  min="0"
-                />
-                <button
-                  type="button"
-                  class="btn btn--reset"
-                  @click="handleResetRunningTime"
-                >
-                  초기화
-                </button>
-              </div>
-            </div>
-
-            <!-- 카테고리 -->
-            <div class="form-group">
-              <label class="form-label">카테고리</label>
-              <p class="form-hint form-hint--normal">
-                공연 장르를 선택해주세요 (여러 개 선택 가능)
-              </p>
-              <div class="category-tags">
-                <button
-                  v-for="category in categoryOptions"
-                  :key="category"
-                  type="button"
-                  class="category-tag"
-                  :class="{ 'category-tag--active': selectedCategories.includes(category) }"
-                  @click="toggleCategory(category)"
-                >
-                  {{ category }}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- 오른쪽 컬럼 -->
-          <div class="form-column">
-            <!-- 공연 장소 -->
-            <div class="form-group">
-              <div class="form-label-row">
-                <label for="performanceVenue" class="form-label">
-                  공연 장소 <span class="required">*</span>
+        <!-- 공연 기본 정보 섹션 -->
+        <section class="form-section">
+          <h2 class="section-title">공연 기본 정보</h2>
+          
+          <div class="form-grid">
+            <!-- 왼쪽 컬럼 -->
+            <div class="form-column">
+              <!-- 공연 이름 -->
+              <div class="form-group">
+                <label for="performanceName" class="form-label">
+                  공연 이름 <span class="required">*</span>
                 </label>
-                <button
-                  type="button"
-                  class="btn btn--find-address"
-                  @click="handleFindAddress"
-                >
-                  주소 찾기
-                </button>
+                <input
+                  id="performanceName"
+                  v-model="formData.performanceName"
+                  type="text"
+                  class="form-input"
+                  placeholder="공연 이름을 입력해주세요"
+                  maxlength="255"
+                  required
+                />
+                <p class="form-hint form-hint--normal">최대 25글자까지 쓸 수 있어요.</p>
               </div>
-              <input
-                id="performanceVenue"
-                v-model="formData.performanceVenue"
-                type="text"
-                class="form-input"
-                placeholder="공연장 이름을 적어주세요"
-                required
-              />
+
+              <!-- 아티스트 -->
+              <div class="form-group">
+                <label for="performanceArtist" class="form-label">
+                  아티스트 <span class="required">*</span>
+                </label>
+                <input
+                  id="performanceArtist"
+                  v-model="formData.performanceArtist"
+                  type="text"
+                  class="form-input"
+                  placeholder="아티스트 이름을 입력해주세요"
+                  maxlength="255"
+                  required
+                />
+              </div>
+
+              <!-- 공연 날짜와 시간 -->
+              <div class="form-group">
+                <label for="performanceDate" class="form-label">
+                  공연 날짜와 시간을 입력해주세요 <span class="required">*</span>
+                </label>
+                <div class="date-time-group">
+                  <div class="date-input-wrapper">
+                    <input
+                      id="performanceDate"
+                      v-model="formData.performanceDate"
+                      type="date"
+                      class="form-input form-input--date"
+                      required
+                    />
+                    <svg
+                      class="input-icon"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M6 2v2M14 2v2M3 6h14M4 4h12a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </div>
+                  <div class="time-input-wrapper">
+                    <input
+                      id="performanceTime"
+                      v-model="formData.performanceTime"
+                      type="time"
+                      class="form-input form-input--time"
+                      required
+                    />
+                    <svg
+                      class="input-icon"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M10 5v5l3 2M10 19a9 9 0 100-18 9 9 0 000 18z"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </div>
+                  <div class="running-time-wrapper">
+                    <input
+                      id="runningTime"
+                      v-model.number="formData.runningTime"
+                      type="number"
+                      class="form-input form-input--running-time"
+                      placeholder="러닝타임"
+                      min="0"
+                    />
+                    <span class="running-time-unit">분</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 카테고리 -->
+              <div class="form-group">
+                <label class="form-label">카테고리</label>
+                <p class="form-hint form-hint--normal">
+                  공연 장르를 선택해주세요 (여러 개 선택 가능)
+                </p>
+                <div class="category-tags">
+                  <button
+                    v-for="category in categoryOptions"
+                    :key="category"
+                    type="button"
+                    class="category-tag"
+                    :class="{ 'category-tag--active': selectedCategories.includes(category) }"
+                    @click="toggleCategory(category)"
+                  >
+                    {{ category }}
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <!-- 상세주소 -->
-            <div class="form-group">
-              <label for="detailedAddress" class="form-label">
-                상세주소 <span class="required">*</span>
-              </label>
-              <p class="form-hint">중요! 상세주소를 그대로 적어주세요!</p>
-              <input
-                id="detailedAddress"
-                v-model="formData.detailedAddress"
-                type="text"
-                class="form-input"
-                placeholder="상세주소를 입력해주세요"
-                required
-              />
-            </div>
+            <!-- 오른쪽 컬럼 -->
+            <div class="form-column">
+              <!-- 공연 장소 -->
+              <div class="form-group">
+                <div class="form-label-row">
+                  <label for="performanceVenue" class="form-label">
+                    공연 장소 <span class="required">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    class="btn btn--find-address"
+                    @click="handleFindAddress"
+                  >
+                    주소 찾기
+                  </button>
+                </div>
+                <input
+                  id="performanceVenue"
+                  v-model="formData.performanceVenue"
+                  type="text"
+                  class="form-input"
+                  placeholder="공연장 이름을 적어주세요"
+                  required
+                />
+              </div>
 
-            <!-- 지도 영역 -->
-            <div class="map-container">
-              <div v-show="selectedPlace" ref="mapContainer" class="map-view"></div>
-              <div v-if="!selectedPlace" class="map-placeholder">
-                <svg
-                  width="40"
-                  height="40"
-                  viewBox="0 0 40 40"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M20 10c-4.418 0-8 3.582-8 8 0 6 8 14 8 14s8-8 8-14c0-4.418-3.582-8-8-8zm0 11a3 3 0 100-6 3 3 0 000 6z"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-                <p>주소를 찾으면 지도가 표시됩니다</p>
+              <!-- 상세주소 -->
+              <div class="form-group">
+                <label for="detailedAddress" class="form-label">
+                  상세주소 <span class="required">*</span>
+                </label>
+                <p class="form-hint">중요! 상세주소를 그대로 적어주세요!</p>
+                <input
+                  id="detailedAddress"
+                  v-model="formData.detailedAddress"
+                  type="text"
+                  class="form-input"
+                  placeholder="상세주소를 입력해주세요"
+                  required
+                />
+              </div>
+
+              <!-- 지도 영역 -->
+              <div class="map-container">
+                <div v-show="selectedPlace" ref="mapContainer" class="map-view"></div>
+                <div v-if="!selectedPlace" class="map-placeholder">
+                  <svg
+                    width="40"
+                    height="40"
+                    viewBox="0 0 40 40"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M20 10c-4.418 0-8 3.582-8 8 0 6 8 14 8 14s8-8 8-14c0-4.418-3.582-8-8-8zm0 11a3 3 0 100-6 3 3 0 000 6z"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  <p>주소를 찾으면 지도가 표시됩니다</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- 공연 포스터 업로드 -->
-        <div class="form-group form-group--full">
+        <!-- 공연 포스터 업로드 섹션 -->
+        <section class="form-section">
+          <h2 class="section-title">공연 포스터</h2>
           <label class="form-label">
             공연 포스터 <span class="required">*</span>
           </label>
@@ -742,10 +658,11 @@ const toggleCategory = (category: string) => {
               </p>
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- 공연 상세 내용 -->
-        <div class="form-group form-group--full">
+        <!-- 공연 상세 내용 섹션 -->
+        <section class="form-section">
+          <h2 class="section-title">공연 상세 내용</h2>
           <label for="performanceDescription" class="form-label">
             공연 상세 내용 <span class="required">*</span>
           </label>
@@ -758,7 +675,7 @@ const toggleCategory = (category: string) => {
             placeholder="공연에 대한 상세한 설명을 입력해주세요..."
             required
           ></textarea>
-        </div>
+        </section>
 
         <!-- 체크리스트 섹션 -->
         <section class="checklist-section">
@@ -830,12 +747,12 @@ const toggleCategory = (category: string) => {
           <button
             type="button"
             class="btn btn--secondary"
-            @click="() => navigateTo('/performance-management')"
+            @click="() => navigateTo('/bookings/performance-management/select')"
           >
             취소
           </button>
           <button type="submit" class="btn btn--primary" :disabled="isLoading">
-            {{ isLoading ? (isUploading ? '업로드 중...' : '저장 중...') : isEditMode ? '수정하기' : '공연 등록' }}
+            {{ isLoading ? (isUploading ? '업로드 중...' : '저장 중...') : '공연 등록' }}
           </button>
         </div>
       </form>
@@ -900,75 +817,109 @@ const toggleCategory = (category: string) => {
 </template>
 
 <style scoped>
-.basic-info-page {
+.performance-create-page {
   min-height: 100vh;
   background: var(--color-page-bg);
+  padding: 32px;
 }
 
 .content-header {
-  margin-bottom: 32px;
+  max-width: 1200px;
+  margin: 0 auto 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-body);
+  transition: all 0.2s;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.back-button:hover {
+  background: var(--color-surface-subtle);
+  border-color: var(--color-border-strong);
 }
 
 .page-title {
+  margin: 0;
   font-size: 28px;
   font-weight: 700;
   color: var(--color-text);
-  margin-bottom: 8px;
 }
 
 .page-subtitle {
+  margin: 4px 0 0;
   font-size: 14px;
   color: var(--color-text-muted);
 }
 
 .content-body {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  padding: 40px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .form {
   width: 100%;
 }
 
+.form-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-card);
+}
+
+.section-title {
+  margin: 0 0 20px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 40px;
-  margin-bottom: 32px;
-  align-items: start;
-}
-
-.form-group--full {
-  grid-column: 1 / -1;
   margin-top: 24px;
 }
 
-.form-label-row .btn--find-address {
-  flex-shrink: 0;
-  align-self: flex-start;
-  margin-top: 0;
-}
-
-.running-time-group {
+.running-time-wrapper {
+  position: relative;
+  flex: 1;
   display: flex;
-  gap: 12px;
   align-items: center;
 }
 
 .form-input--running-time {
-  flex: 1;
+  padding-right: 50px;
 }
 
-.btn--reset {
-  background: var(--color-danger);
-  color: #ffffff;
-  padding: 8px 16px;
+.running-time-unit {
+  position: absolute;
+  right: 16px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  pointer-events: none;
 }
 
-.btn--reset:hover {
-  background: var(--color-danger-strong);
+.upload-guidelines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
 }
 
 /* 체크리스트 섹션 */
@@ -977,7 +928,6 @@ const toggleCategory = (category: string) => {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: 24px;
-  margin-top: 32px;
   margin-bottom: 24px;
 }
 
@@ -1055,7 +1005,6 @@ const toggleCategory = (category: string) => {
   justify-content: flex-end;
   gap: 12px;
   padding-top: 24px;
-  border-top: 1px solid var(--color-border);
 }
 
 @media (max-width: 1024px) {
@@ -1063,21 +1012,23 @@ const toggleCategory = (category: string) => {
     grid-template-columns: 1fr;
     gap: 24px;
   }
-
-  .form-group--full {
-    grid-column: 1;
-  }
 }
 
 @media (max-width: 768px) {
+  .performance-create-page {
+    padding: 16px;
+  }
+
+  .content-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .page-title {
     font-size: 22px;
   }
 
-  .content-body {
-    padding: 20px 16px;
-  }
-
+  .form-section,
   .checklist-section,
   .notes-section {
     padding: 20px 16px;
@@ -1091,12 +1042,14 @@ const toggleCategory = (category: string) => {
     width: 100%;
   }
 
+  /* 날짜·시간·러닝타임이 한 줄에 다 들어가 넘치므로 줄바꿈 허용 */
   .date-time-group {
     flex-wrap: wrap;
   }
 
   .date-input-wrapper,
-  .time-input-wrapper {
+  .time-input-wrapper,
+  .running-time-wrapper {
     flex: 1 1 140px;
   }
 }

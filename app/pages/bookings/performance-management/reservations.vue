@@ -56,14 +56,14 @@ onMounted(async () => {
   }
   if (!user.value) await fetchProfile()
   if (!performanceId.value) {
-    await navigateTo('/performance-management/select')
+    await navigateTo('/bookings/performance-management/select')
     return
   }
   loading.value = true
   try {
     const data = await getPerformanceById(performanceId.value)
     if (!data) {
-      await navigateTo('/performance-management/select')
+      await navigateTo('/bookings/performance-management/select')
       return
     }
     performance.value = data

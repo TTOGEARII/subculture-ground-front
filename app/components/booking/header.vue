@@ -29,7 +29,7 @@ const toggleDropdown = () => {
 
 const handleMyPage = () => {
   isDropdownOpen.value = false
-  navigateTo('/my-page')
+  navigateTo('/bookings/my-page')
 }
 
 const handleLogout = async () => {

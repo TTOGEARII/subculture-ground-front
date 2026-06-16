@@ -39,17 +39,17 @@ const loadData = async () => {
         selectedPerformance.value = performance
       } else {
         // 공연을 찾을 수 없으면 선택 페이지로 리다이렉트
-        await navigateTo('/performance-management/select')
+        await navigateTo('/bookings/performance-management/select')
       }
     } catch (error) {
       console.error('공연 정보 로드 실패:', error)
-      await navigateTo('/performance-management/select')
+      await navigateTo('/bookings/performance-management/select')
     } finally {
       isLoadingPerformance.value = false
     }
   } else {
     // 공연 ID가 없으면 선택 페이지로 리다이렉트
-    await navigateTo('/performance-management/select')
+    await navigateTo('/bookings/performance-management/select')
   }
 }
 
@@ -59,7 +59,7 @@ onMounted(() => {
 
 // 라우트 변경 감지하여 새로고침 (공연 등록 후 돌아왔을 때)
 watch(() => route.query.id, async () => {
-  if (route.path === '/performance-management') {
+  if (route.path === '/bookings/performance-management') {
     await loadData()
   }
 })
@@ -79,7 +79,7 @@ const handleDeletePerformance = async (performanceId?: number) => {
       await deletePerformance(performanceId)
       alert('공연이 삭제되었습니다.')
       // 선택 페이지로 리다이렉트
-      await navigateTo('/performance-management/select')
+      await navigateTo('/bookings/performance-management/select')
     } catch (error) {
       console.error('공연 삭제 실패:', error)
       alert('공연 삭제 중 오류가 발생했습니다.')
@@ -88,7 +88,7 @@ const handleDeletePerformance = async (performanceId?: number) => {
 }
 
 const handleRegisterPerformance = () => {
-  navigateTo('/performance-management/select')
+  navigateTo('/bookings/performance-management/select')
 }
 
 // 날짜 포맷팅
@@ -108,7 +108,7 @@ const formatDate = (dateStr: string) => {
   <div class="performance-dashboard">
     <div class="content-header">
       <div class="breadcrumb">
-        <NuxtLink to="/performance-management/select" class="breadcrumb-link">공연 준비하기</NuxtLink>
+        <NuxtLink to="/bookings/performance-management/select" class="breadcrumb-link">공연 준비하기</NuxtLink>
         <span class="separator">/</span>
         <span>대시보드</span>
       </div>
@@ -165,7 +165,7 @@ const formatDate = (dateStr: string) => {
           </div>
           <div class="card-actions">
             <NuxtLink
-              :to="`/performance-management/basic-info?id=${selectedPerformance.id}`"
+              :to="`/bookings/performance-management/basic-info?id=${selectedPerformance.id}`"
               class="btn btn--primary"
             >
               공연 정보 수정
@@ -185,7 +185,7 @@ const formatDate = (dateStr: string) => {
           <h3 class="section-title">빠른 관리</h3>
           <div class="actions-grid">
             <NuxtLink
-              :to="`/performance-management/basic-info?id=${selectedPerformance.id}`"
+              :to="`/bookings/performance-management/basic-info?id=${selectedPerformance.id}`"
               class="action-card"
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -195,7 +195,7 @@ const formatDate = (dateStr: string) => {
               <span>공연 기본 정보</span>
             </NuxtLink>
             <NuxtLink
-              :to="`/performance-management/tickets?id=${selectedPerformance.id}`"
+              :to="`/bookings/performance-management/tickets?id=${selectedPerformance.id}`"
               class="action-card"
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -205,7 +205,7 @@ const formatDate = (dateStr: string) => {
               <span>티켓 관리</span>
             </NuxtLink>
             <NuxtLink
-              :to="`/performance-management/reservations?id=${selectedPerformance.id}`"
+              :to="`/bookings/performance-management/reservations?id=${selectedPerformance.id}`"
               class="action-card"
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

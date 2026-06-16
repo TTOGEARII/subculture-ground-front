@@ -82,7 +82,7 @@ const formatEventDate = (dateString: string) => {
   <div class="res-page">
     <main class="main">
       <div class="page-head">
-        <NuxtLink to="/my-page" class="back-button" aria-label="마이페이지로">
+        <NuxtLink to="/bookings/my-page" class="back-button" aria-label="마이페이지로">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
