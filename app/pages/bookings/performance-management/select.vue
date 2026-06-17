@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useAuth } from '../../../composables/useAuth'
 import { usePerformances, getStatusText } from '../../../composables/usePerformances'
+import { useImageUrl } from '../../../composables/useImageUrl'
 
 definePageMeta({
   layout: 'bookings',
@@ -8,6 +9,7 @@ definePageMeta({
 
 const { isAuthenticated, user, fetchProfile } = useAuth()
 const { performances, loading, loadMyPerformances } = usePerformances()
+const { resolveImageUrl: getImageSrc } = useImageUrl()
 
 onMounted(async () => {
   if (!isAuthenticated.value) {
@@ -104,7 +106,7 @@ const handleNewPerformance = () => {
             <div class="performance-image">
               <img
                 v-if="performance.image"
-                :src="performance.image"
+                :src="getImageSrc(performance.image)!"
                 :alt="performance.name"
                 class="image"
               />

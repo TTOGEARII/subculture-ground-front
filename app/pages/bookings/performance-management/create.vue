@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useAuth } from '../../../composables/useAuth'
 import { usePerformances } from '../../../composables/usePerformances'
+import { useImageUrl } from '../../../composables/useImageUrl'
 import { useApi } from '../../../composables/useUtil'
 import { useKakaoMap, type KakaoPlace } from '../../../composables/useKakaoMap'
 
@@ -11,6 +12,7 @@ definePageMeta({
 const { isAuthenticated, user, fetchProfile } = useAuth()
 const { createPerformance, createTicketInfo } = usePerformances()
 const { loadSdk, searchPlaces } = useKakaoMap()
+const { resolveImageUrl: getImageSrc } = useImageUrl()
 
 // 폼 데이터
 const formData = ref({
@@ -661,7 +663,7 @@ const toggleCategory = (category: string) => {
 
             <div v-if="formData.performanceImagePreview" class="upload-preview">
               <img
-                :src="formData.performanceImagePreview"
+                :src="getImageSrc(formData.performanceImagePreview)!"
                 alt="공연 포스터 미리보기"
                 class="preview-image"
               />

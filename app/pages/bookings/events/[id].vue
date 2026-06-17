@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { usePerformances, getStatusText, type Performance, type TicketInfo } from '../../../../composables/usePerformances'
+import { useImageUrl } from '../../../../composables/useImageUrl'
 import { useAuth } from '../../../../composables/useAuth'
 import { useKakaoMap } from '../../../../composables/useKakaoMap'
 
@@ -101,15 +102,7 @@ const formatPrice = (price: number) =>
 const getStatusClass = (status: Performance['status']) =>
   status === 1 ? 'status--open' : 'status--closed'
 
-const getImageSrc = (image?: string) => {
-  if (!image) return null
-  const config = useRuntimeConfig()
-  // 호스트가 박힌 절대 URL(레거시 localhost 등)이든 상대경로든 /uploads/ 이하만 apiBase로 재절대화
-  const uploadsIdx = image.indexOf('/uploads/')
-  if (uploadsIdx >= 0) return `${config.public.apiBase}${image.slice(uploadsIdx)}`
-  if (image.startsWith('http')) return image
-  return `${config.public.apiBase}${image}`
-}
+const { resolveImageUrl: getImageSrc } = useImageUrl()
 
 const getRemainingCount = (ticket: TicketInfo) => ticket.ticketMax - ticket.ticketCount
 
