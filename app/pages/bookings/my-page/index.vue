@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useAuth } from '../../../composables/useAuth'
 import { usePerformances, getStatusText, type MyReservation } from '../../../composables/usePerformances'
+import { useImageUrl } from '../../../composables/useImageUrl'
 
 definePageMeta({
   layout: 'bookings',
@@ -57,17 +58,7 @@ onMounted(async () => {
 const formatPrice = (price: number) =>
   price === 0 ? '무료' : new Intl.NumberFormat('ko-KR').format(price) + '원'
 
-const config = useRuntimeConfig()
-
-// 이미지 URL 변환 — 호스트가 박힌 절대 URL(레거시 localhost 등)이든 상대경로든
-// /uploads/ 이하만 apiBase로 재절대화해 환경에 무관하게 표시
-const getImageSrc = (image?: string) => {
-  if (!image) return null
-  const uploadsIdx = image.indexOf('/uploads/')
-  if (uploadsIdx >= 0) return `${config.public.apiBase}${image.slice(uploadsIdx)}`
-  if (image.startsWith('http')) return image
-  return `${config.public.apiBase}${image}`
-}
+const { resolveImageUrl: getImageSrc } = useImageUrl()
 
 // 공연 날짜 포맷팅 (2026.09.20 (일))
 const formatEventDate = (dateString: string) => {

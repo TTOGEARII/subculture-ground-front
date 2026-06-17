@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useAuth } from '../../../composables/useAuth'
 import { usePerformances, getStatusText } from '../../../composables/usePerformances'
+import { useImageUrl } from '../../../composables/useImageUrl'
 
 definePageMeta({
   layout: 'performance-management',
@@ -8,6 +9,7 @@ definePageMeta({
 
 const { isAuthenticated, user, fetchProfile } = useAuth()
 const { performances, loading, loadMyPerformances, getPerformanceById } = usePerformances()
+const { resolveImageUrl: getImageSrc } = useImageUrl()
 const route = useRoute()
 
 // 쿼리 파라미터에서 공연 ID 가져오기
@@ -127,7 +129,7 @@ const formatDate = (dateStr: string) => {
             <div class="performance-image-large">
               <img
                 v-if="selectedPerformance.image"
-                :src="selectedPerformance.image"
+                :src="getImageSrc(selectedPerformance.image)!"
                 :alt="selectedPerformance.name"
                 class="image"
               />
