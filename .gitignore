@@ -21,3 +21,6 @@ pnpm-debug.log*
 
 # local env (카카오 키 등)
 .env
+
+# Claude Code
+CLAUDE.md
