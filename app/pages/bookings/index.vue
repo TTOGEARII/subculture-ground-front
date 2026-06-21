@@ -74,48 +74,48 @@ useSeoMeta({
         <div class="section__head">
           <h2 class="section__title">예매 기능</h2>
           <p class="section__desc">
-            실제 서비스가 아닌 토이 프로젝트이지만, 공연 예매의 흐름을 느낄 수 있도록 구성했습니다.
+            공연을 찾고, 티켓을 골라 예매하고, QR로 입장하기까지. 실제 동작하는 예매 흐름을 담았습니다.
           </p>
         </div>
 
         <div class="features-grid">
           <article class="feature-card">
             <span class="feature-card__number">01</span>
-            <h3 class="feature-card__title">ONLY SUBCULTURE</h3>
-            <p class="feature-card__subtitle">수수료 ZERO 티켓 흐름</p>
+            <h3 class="feature-card__title">SEARCH &amp; FILTER</h3>
+            <p class="feature-card__subtitle">공연 검색 · 필터</p>
             <p class="feature-card__body">
-              실제 결제는 없지만, 수수료 없이 주문을 관리하는 흐름을 연습할 수 있도록
-              설계된 UI입니다.
+              공연명 · 아티스트 · 장소로 검색하고, 카테고리와 예매 상태(예매중/마감)로
+              원하는 공연을 추려 봅니다. 카드에서 일정 · 장소 · 최저가를 한눈에 확인할 수 있습니다.
             </p>
           </article>
 
           <article class="feature-card">
             <span class="feature-card__number">02</span>
-            <h3 class="feature-card__title">CHEER UP</h3>
-            <p class="feature-card__subtitle">응원 메세지 영역</p>
+            <h3 class="feature-card__title">VENUE MAP</h3>
+            <p class="feature-card__subtitle">카카오맵 오시는 길</p>
             <p class="feature-card__body">
-              상세 페이지에 밴드 소개, 공연 소개 블록을 응원톡처럼 확장할 수 있도록
-              구조를 잡아 두었습니다.
+              공연 상세를 정보 · 판매정보 탭으로 나눠 보여주고, 카카오맵으로 공연장 위치를
+              표시합니다. 등록 시 주소 검색으로 저장된 좌표가 그대로 지도에 반영됩니다.
             </p>
           </article>
 
           <article class="feature-card">
             <span class="feature-card__number">03</span>
-            <h3 class="feature-card__title">QUICK ENTRANCE</h3>
-            <p class="feature-card__subtitle">QR 티켓을 상상한 레이아웃</p>
+            <h3 class="feature-card__title">BOOK TICKETS</h3>
+            <p class="feature-card__subtitle">티켓 선택 · 예매</p>
             <p class="feature-card__body">
-              사이드 `booking-card` 컴포넌트는 추후 QR 티켓, 좌석 정보 등으로
-              확장하기 쉽게 나누어져 있습니다.
+              티켓 종류별 가격과 잔여 수량을 확인하고, 구매 제한(최소/최대) 안에서 수량을
+              정해 예매합니다. 여러 티켓 타입을 추가해도 레이아웃이 유지됩니다.
             </p>
           </article>
 
           <article class="feature-card">
             <span class="feature-card__number">04</span>
-            <h3 class="feature-card__title">VARIOUS TICKETS</h3>
-            <p class="feature-card__subtitle">다양한 공연 티켓</p>
+            <h3 class="feature-card__title">QR ENTRANCE</h3>
+            <p class="feature-card__subtitle">QR 입장권 · 예매내역</p>
             <p class="feature-card__body">
-              현재는 더미 데이터지만, 티켓 타입을 추가해도 UI가 깨지지 않도록
-              카드·그리드 구조를 유연하게 설계했습니다.
+              예매하면 마이페이지에 상태별(예매완료/입장완료/취소)로 정리되고, 입장용
+              QR코드가 자동 발급됩니다. 주최자는 현장에서 QR을 스캔해 입장 처리합니다.
             </p>
           </article>
         </div>
