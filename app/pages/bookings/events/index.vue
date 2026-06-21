@@ -218,7 +218,7 @@ const { resolveImageUrl: getImageSrc } = useImageUrl()
 .events-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
+  gap: var(--space-base);
 }
 
 .event-card-link {
@@ -287,11 +287,11 @@ const { resolveImageUrl: getImageSrc } = useImageUrl()
 
 /* 카드 본문 */
 .event-card__body {
-  padding: 14px 16px 16px;
+  padding: var(--space-base);
 }
 
 .event-card__date {
-  margin: 0 0 6px;
+  margin: 0 0 var(--space-sm);
   font-size: 12px;
   font-weight: 500;
   color: var(--primary);
@@ -309,7 +309,7 @@ const { resolveImageUrl: getImageSrc } = useImageUrl()
 }
 
 .event-card__artist {
-  margin: 0 0 10px;
+  margin: 0 0 var(--space-sm);
   font-size: 13px;
   color: var(--muted);
 }
@@ -318,7 +318,7 @@ const { resolveImageUrl: getImageSrc } = useImageUrl()
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: var(--space-md);
 }
 
 .event-card__venue {

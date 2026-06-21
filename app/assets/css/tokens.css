@@ -37,6 +37,18 @@
   --color-success-border: #a7f3d0;
   --color-success-text: #065f46;
 
+  /* 여백 — 8px 베이스 스케일 (DESIGN.md spacing 토큰)
+   * 마진·패딩·gap은 이 스케일에서 고른다. 임의의 px(26·18·14…) 대신 토큰을 쓴다. */
+  --space-xxs: 2px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-base: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-section: 64px;
+
   /* 반경 */
   --radius-sm: 4px;
   --radius-md: 8px;

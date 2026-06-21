@@ -143,14 +143,14 @@ const formatEventDate = (dateString: string) => {
 .main {
   max-width: 720px;
   margin: 0 auto;
-  padding: 24px 20px 56px;
+  padding: var(--space-lg) var(--space-lg) var(--space-section);
 }
 
 .page-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 24px;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
 }
 
 .back-button {
@@ -177,8 +177,8 @@ const formatEventDate = (dateString: string) => {
 
 .status-tabs {
   display: flex;
-  gap: 4px;
-  margin-bottom: 20px;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-lg);
   border-bottom: 1px solid var(--color-border);
   overflow-x: auto;
 }
@@ -186,8 +186,8 @@ const formatEventDate = (dateString: string) => {
 .status-tab {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 10px 14px;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-base);
   border: none;
   background: none;
   color: var(--color-text-muted);
@@ -243,15 +243,15 @@ const formatEventDate = (dateString: string) => {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-md);
 }
 
 .res-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 18px;
+  gap: var(--space-base);
+  padding: var(--space-base);
   border: 1px solid var(--color-border);
   border-radius: 14px;
   background: #ffffff;
