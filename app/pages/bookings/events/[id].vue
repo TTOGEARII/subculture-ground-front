@@ -467,7 +467,7 @@ const confirmBooking = () => {
   border-radius: 14px;
   overflow: hidden;
   background: var(--surface-soft);
-  margin-bottom: 20px;
+  margin-bottom: var(--space-lg);
 }
 
 .perf-poster__img {
@@ -492,7 +492,7 @@ const confirmBooking = () => {
 }
 
 .perf-title {
-  margin: 0 0 6px;
+  margin: 0 0 var(--space-sm);
   font-size: 24px;
   font-weight: 700;
   color: var(--ink);
@@ -514,7 +514,7 @@ const confirmBooking = () => {
 }
 
 .tab-btn {
-  padding: 12px 20px;
+  padding: var(--space-md) var(--space-lg);
   border: none;
   background: transparent;
   font-size: 15px;
@@ -546,7 +546,7 @@ const confirmBooking = () => {
 
 .info-row {
   display: flex;
-  padding: 14px 20px;
+  padding: var(--space-base) var(--space-lg);
   border-bottom: 1px solid var(--hairline-soft);
 }
 
@@ -569,7 +569,7 @@ const confirmBooking = () => {
 
 /* 공연 소개 */
 .block-title {
-  margin: 0 0 14px;
+  margin: 0 0 var(--space-base);
   font-size: 17px;
   font-weight: 600;
   color: var(--ink);
@@ -607,8 +607,8 @@ const confirmBooking = () => {
 .host-card {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  padding: 20px;
+  gap: var(--space-base);
+  padding: var(--space-lg);
   border: 1px solid var(--hairline-soft);
   border-radius: 12px;
 }
@@ -618,7 +618,7 @@ const confirmBooking = () => {
 }
 
 .host-name {
-  margin: 0 0 6px;
+  margin: 0 0 var(--space-sm);
   font-size: 15px;
   font-weight: 600;
   color: var(--ink);
@@ -633,7 +633,7 @@ const confirmBooking = () => {
 
 /* 안내 */
 .notice-block {
-  padding: 14px 16px;
+  padding: var(--space-base);
   background: var(--surface-soft);
   border-radius: 8px;
 }
@@ -656,8 +656,8 @@ const confirmBooking = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 18px 20px;
+  gap: var(--space-base);
+  padding: var(--space-base) var(--space-lg);
   border: 1px solid var(--hairline-soft);
   border-radius: 12px;
   transition: border-color 120ms ease;
@@ -679,7 +679,7 @@ const confirmBooking = () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: var(--space-sm);
 }
 
 .ticket-name {
@@ -700,8 +700,8 @@ const confirmBooking = () => {
 .ticket-item__meta {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
 }
 
 .ticket-price {
@@ -730,7 +730,7 @@ const confirmBooking = () => {
 
 .ticket-item__btn {
   flex-shrink: 0;
-  padding: 10px 20px;
+  padding: var(--space-md) var(--space-lg);
   border-radius: 8px;
   border: 1px solid var(--ink);
   background: #ffffff;
@@ -770,8 +770,8 @@ const confirmBooking = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-base);
   border-bottom: 1px solid var(--hairline-soft);
 }
 
@@ -791,8 +791,8 @@ const confirmBooking = () => {
 .booking-info {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
 }
 
 .booking-info-item {
@@ -844,12 +844,12 @@ const confirmBooking = () => {
 }
 
 .modal-perf-info {
-  padding-bottom: 20px;
+  padding-bottom: var(--space-lg);
   border-bottom: 1px solid var(--hairline-soft);
 }
 
 .modal-perf-name {
-  margin: 0 0 14px;
+  margin: 0 0 var(--space-base);
   font-size: 17px;
   font-weight: 600;
   color: var(--ink);
@@ -891,7 +891,7 @@ const confirmBooking = () => {
   align-items: center;
   gap: 16px;
   justify-content: center;
-  margin-bottom: 20px;
+  margin-bottom: var(--space-lg);
 }
 
 .counter-btn {
