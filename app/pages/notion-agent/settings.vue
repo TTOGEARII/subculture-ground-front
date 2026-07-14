@@ -6,13 +6,13 @@ definePageMeta({ layout: 'main' })
 
 useSeoMeta({
   title: '노션 에이전트 설정 - Subculture Ground',
-  description: '노션 Integration 토큰과 Anthropic API 키를 등록합니다.',
+  description: '노션 Integration 토큰과 Gemini API 키를 등록합니다.',
 })
 
 const { status, fetchStatus, saveCredentials, deleteCredentials } = useNotionAgent()
 
 const notionToken = ref('')
-const anthropicKey = ref('')
+const geminiKey = ref('')
 const saving = ref(false)
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -26,19 +26,19 @@ onMounted(async () => {
 })
 
 const handleSave = async () => {
-  if (!notionToken.value && !anthropicKey.value) {
+  if (!notionToken.value && !geminiKey.value) {
     message.value = { type: 'error', text: '저장할 값을 입력해주세요.' }
     return
   }
   saving.value = true
   message.value = null
   try {
-    const dto: { notionToken?: string; anthropicKey?: string } = {}
+    const dto: { notionToken?: string; geminiKey?: string } = {}
     if (notionToken.value) dto.notionToken = notionToken.value.trim()
-    if (anthropicKey.value) dto.anthropicKey = anthropicKey.value.trim()
+    if (geminiKey.value) dto.geminiKey = geminiKey.value.trim()
     await saveCredentials(dto)
     notionToken.value = ''
-    anthropicKey.value = ''
+    geminiKey.value = ''
     await fetchStatus()
     message.value = { type: 'success', text: '저장했어요. 이제 에이전트와 대화할 수 있습니다.' }
   } catch {
@@ -66,7 +66,7 @@ const handleDelete = async () => {
         <NuxtLink to="/notion-agent" class="back-link">← 에이전트로 돌아가기</NuxtLink>
         <h1 class="settings-title">노션 에이전트 설정</h1>
         <p class="settings-desc">
-          노션 Integration 토큰과 Anthropic API 키를 등록하면 에이전트가 동작합니다.
+          노션 Integration 토큰과 Gemini API 키를 등록하면 에이전트가 동작합니다.
           두 값 모두 서버에 암호화되어 저장돼요.
         </p>
       </header>
@@ -83,8 +83,8 @@ const handleDelete = async () => {
             <strong v-else>미설정</strong>
           </li>
           <li class="status-item">
-            <span :class="['status-dot', status?.hasAnthropicKey ? 'is-on' : 'is-off']" />
-            Anthropic API 키: <strong>{{ status?.hasAnthropicKey ? '연결됨' : '미설정' }}</strong>
+            <span :class="['status-dot', status?.hasGeminiKey ? 'is-on' : 'is-off']" />
+            Gemini API 키: <strong>{{ status?.hasGeminiKey ? '연결됨' : '미설정' }}</strong>
           </li>
         </ul>
       </section>
@@ -108,19 +108,19 @@ const handleDelete = async () => {
         </div>
 
         <div class="form-field">
-          <label class="form-label" for="anthropic-key">Anthropic API 키</label>
+          <label class="form-label" for="gemini-key">Gemini API 키</label>
           <input
-            id="anthropic-key"
-            v-model="anthropicKey"
+            id="gemini-key"
+            v-model="geminiKey"
             type="password"
             class="form-input"
-            placeholder="sk-ant-"
+            placeholder="AIza…"
             autocomplete="off"
           />
           <p class="form-hint">
-            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">
-              console.anthropic.com</a
-            >에서 발급한 키. 에이전트의 두뇌(Claude) 호출에 사용됩니다.
+            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">
+              aistudio.google.com</a
+            >에서 발급한 키. 에이전트의 두뇌(Gemini) 호출에 사용됩니다.
           </p>
         </div>
 
@@ -131,7 +131,7 @@ const handleDelete = async () => {
             {{ saving ? '저장 중…' : '저장' }}
           </button>
           <button
-            v-if="status?.hasNotionToken || status?.hasAnthropicKey"
+            v-if="status?.hasNotionToken || status?.hasGeminiKey"
             type="button"
             class="btn btn--ghost"
             @click="handleDelete"
