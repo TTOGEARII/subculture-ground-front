@@ -1,9 +1,49 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   ssr: false,
-  modules: ['@nuxt/content'],
+  modules: ['@nuxt/content', '@vite-pwa/nuxt'],
   devtools: { enabled: true },
   compatibilityDate: '2024-04-03',
+  // SPA(ssr:false)에서 @vite-pwa가 head에 자동 주입하지 않으므로 명시적으로 넣는다.
+  app: {
+    head: {
+      meta: [
+        { name: 'theme-color', content: '#ff385c' },
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
+        { name: 'apple-mobile-web-app-title', content: '음연화' },
+      ],
+      link: [
+        { rel: 'manifest', href: '/manifest.webmanifest' },
+        { rel: 'apple-touch-icon', href: '/pwa-192.png' },
+      ],
+    },
+  },
+  pwa: {
+    registerType: 'autoUpdate',
+    manifest: {
+      name: 'Subculture Ground',
+      short_name: '음연화',
+      description: '서브컬처 공연 예매 + 노션 AI 에이전트 · 합주실 예약',
+      lang: 'ko',
+      theme_color: '#ff385c',
+      background_color: '#ffffff',
+      display: 'standalone',
+      start_url: '/',
+      icons: [
+        { src: '/pwa-192.png', sizes: '192x192', type: 'image/png' },
+        { src: '/pwa-512.png', sizes: '512x512', type: 'image/png' },
+        { src: '/pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      ],
+    },
+    // SPA(ssr:false)라 모든 경로를 '/'로 폴백
+    workbox: {
+      navigateFallback: '/',
+      globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
+    },
+    client: { installPrompt: true },
+    devOptions: { enabled: true, suppressWarnings: true, type: 'module', navigateFallback: '/' },
+  },
   devServer: {
     port: 3000,
     host: '0.0.0.0',
