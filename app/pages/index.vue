@@ -21,11 +21,11 @@ const projects = [
     ready: true,
   },
   {
-    name: '신규 프로젝트',
-    tag: 'Coming soon',
-    desc: '다음 토이 프로젝트가 이 자리에 들어갑니다.',
-    to: '',
-    ready: false,
+    name: '노션 AI 에이전트',
+    tag: 'Notion Agent',
+    desc: '노션 워크스페이스를 대화로 관리하고, 서울 합주실 빈 시간을 실시간 조회해 예약 일정을 캘린더 DB에 등록하는 AI 에이전트.',
+    to: '/notion-agent',
+    ready: true,
   },
   {
     name: '신규 프로젝트',
