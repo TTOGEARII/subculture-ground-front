@@ -58,6 +58,7 @@ export const useNotionAgent = () => {
   const sendMessage = async (
     message: string,
     history: ChatMessage[],
+    model?: string,
   ): Promise<{ reply: string; toolCalls: ToolCallTrace[] }> => {
     const { data } = await api.post<{ reply: string; toolCalls: ToolCallTrace[] }>(
       '/notion-agent/chat',
@@ -65,6 +66,7 @@ export const useNotionAgent = () => {
         message,
         // 백엔드는 텍스트 턴만 받는다 — 도구 트레이스는 UI 표시용이라 제외
         history: history.map((m) => ({ role: m.role, content: m.content })),
+        model,
       },
       { timeout: 300_000 },
     )
