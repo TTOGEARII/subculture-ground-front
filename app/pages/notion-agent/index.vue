@@ -45,7 +45,7 @@ onMounted(async () => {
   }
   try {
     const s = await fetchStatus()
-    ready.value = s.hasNotionToken && s.hasAnthropicKey
+    ready.value = s.hasNotionToken && s.hasGeminiKey
   } catch {
     ready.value = false
   } finally {
@@ -109,8 +109,8 @@ const handleSend = async (text?: string) => {
       <section v-else-if="!ready" class="agent-empty">
         <h2 class="agent-empty__title">시작하려면 연결이 필요해요</h2>
         <p class="agent-empty__text">
-          노션 Integration 토큰{{ status?.hasNotionToken ? ' ✓' : '' }}과 Anthropic API 키{{
-            status?.hasAnthropicKey ? ' ✓' : ''
+          노션 Integration 토큰{{ status?.hasNotionToken ? ' ✓' : '' }}과 Gemini API 키{{
+            status?.hasGeminiKey ? ' ✓' : ''
           }}를 등록하면 에이전트가 노션을 관리할 수 있습니다.
         </p>
         <NuxtLink to="/notion-agent/settings" class="btn btn--primary">토큰 등록하기</NuxtLink>
