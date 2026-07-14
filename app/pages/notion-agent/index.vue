@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref } from 'vue'
+import { nextTick, onMounted, ref, watch } from 'vue'
 import { useNotionAgent, type ChatMessage } from '../../../composables/useNotionAgent'
 
 definePageMeta({ layout: 'main' })
@@ -11,13 +11,38 @@ useSeoMeta({
 
 const { status, fetchStatus, sendMessage } = useNotionAgent()
 
+// 선택 가능한 대표 모델 (백엔드 ALLOWED_MODELS와 일치)
+const MODELS = [
+  { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash (최신)' },
+  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (안정)' },
+]
+const CHAT_STORAGE_KEY = 'notion-agent:chat'
+const MODEL_STORAGE_KEY = 'notion-agent:model'
+
 const ready = ref(false) // 자격증명 확인 완료 + 둘 다 설정됨
 const checking = ref(true)
 const messages = ref<ChatMessage[]>([])
+const selectedModel = ref(MODELS[0].id)
 const input = ref('')
 const sending = ref(false)
 const errorText = ref('')
 const listEl = ref<HTMLElement | null>(null)
+
+// 대화기록 · 모델 선택을 localStorage에 보존 (브라우저 재방문 시 복원)
+const persistChat = () => {
+  if (import.meta.client) {
+    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages.value))
+  }
+}
+watch(selectedModel, (m) => {
+  if (import.meta.client) localStorage.setItem(MODEL_STORAGE_KEY, m)
+})
+
+const clearChat = () => {
+  messages.value = []
+  errorText.value = ''
+  if (import.meta.client) localStorage.removeItem(CHAT_STORAGE_KEY)
+}
 
 const TOOL_LABELS: Record<string, string> = {
   notion_search: '노션 검색',
@@ -43,6 +68,15 @@ onMounted(async () => {
     await navigateTo('/auth/login')
     return
   }
+  // 저장된 대화기록·모델 복원
+  try {
+    const savedChat = localStorage.getItem(CHAT_STORAGE_KEY)
+    if (savedChat) messages.value = JSON.parse(savedChat) as ChatMessage[]
+    const savedModel = localStorage.getItem(MODEL_STORAGE_KEY)
+    if (savedModel && MODELS.some((m) => m.id === savedModel)) selectedModel.value = savedModel
+  } catch {
+    // 파싱 실패 시 무시하고 빈 대화로 시작
+  }
   try {
     const s = await fetchStatus()
     ready.value = s.hasNotionToken && s.hasGeminiKey
@@ -66,12 +100,14 @@ const handleSend = async (text?: string) => {
   input.value = ''
   const history = [...messages.value]
   messages.value.push({ role: 'user', content })
+  persistChat()
   sending.value = true
   await scrollToBottom()
 
   try {
-    const { reply, toolCalls } = await sendMessage(content, history)
+    const { reply, toolCalls } = await sendMessage(content, history, selectedModel.value)
     messages.value.push({ role: 'assistant', content: reply, toolCalls })
+    persistChat()
   } catch (error: unknown) {
     const msg =
       (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -79,6 +115,7 @@ const handleSend = async (text?: string) => {
     errorText.value = Array.isArray(msg) ? msg.join(', ') : String(msg)
     // 실패한 사용자 메시지는 입력창에 복원
     messages.value.pop()
+    persistChat()
     input.value = content
   } finally {
     sending.value = false
@@ -91,13 +128,30 @@ const handleSend = async (text?: string) => {
   <div class="page">
     <main class="agent-main">
       <header class="agent-head">
-        <div>
+        <div class="agent-head__title-wrap">
+          <NuxtLink to="/" class="home-link" title="메인으로">← 메인</NuxtLink>
           <h1 class="agent-title">노션 AI 에이전트</h1>
           <p class="agent-subtitle">
             노션 관리 + 합주실 빈 시간 조회 · 예약 일정을 캘린더 DB에 등록
           </p>
         </div>
-        <NuxtLink to="/notion-agent/settings" class="btn btn--ghost">설정</NuxtLink>
+        <div class="agent-head__actions">
+          <label class="model-select">
+            <span class="model-select__label">모델</span>
+            <select v-model="selectedModel" class="model-select__input" :disabled="sending">
+              <option v-for="m in MODELS" :key="m.id" :value="m.id">{{ m.label }}</option>
+            </select>
+          </label>
+          <button
+            v-if="ready && messages.length"
+            type="button"
+            class="btn btn--ghost"
+            @click="clearChat"
+          >
+            새 대화
+          </button>
+          <NuxtLink to="/notion-agent/settings" class="btn btn--ghost">설정</NuxtLink>
+        </div>
       </header>
 
       <!-- 자격증명 확인 중 -->
@@ -194,6 +248,20 @@ const handleSend = async (text?: string) => {
   justify-content: space-between;
   gap: var(--space-base);
   margin-bottom: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.home-link {
+  display: inline-block;
+  margin-bottom: var(--space-xs);
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 120ms ease;
+}
+
+.home-link:hover {
+  color: var(--ink);
 }
 
 .agent-title {
@@ -207,6 +275,39 @@ const handleSend = async (text?: string) => {
   margin: 0;
   font-size: 13px;
   color: var(--muted);
+}
+
+.agent-head__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.model-select {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.model-select__label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.model-select__input {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+}
+
+.model-select__input:focus {
+  border-color: var(--ink);
 }
 
 /* ── 온보딩/빈 상태 ── */
