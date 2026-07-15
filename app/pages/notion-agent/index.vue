@@ -54,6 +54,8 @@ const TOOL_LABELS: Record<string, string> = {
   notion_create_page: '페이지 생성',
   notion_update_page: '페이지 수정',
   notion_get_page: '페이지 조회',
+  notion_get_blocks: '본문 조회',
+  notion_append_blocks: '본문 작성',
   search_studios: '합주실 검색',
   get_available_slots: '빈 시간 조회',
   get_reservation_url: '예약 링크',
