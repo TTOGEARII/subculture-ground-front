@@ -18,6 +18,7 @@ const MODELS = [
 ]
 const CHAT_STORAGE_KEY = 'notion-agent:chat'
 const MODEL_STORAGE_KEY = 'notion-agent:model'
+const TEXTAREA_MAX_HEIGHT = 200 // px — 이보다 커지면 내부 스크롤
 
 const ready = ref(false) // 자격증명 확인 완료 + 둘 다 설정됨
 const checking = ref(true)
@@ -27,6 +28,7 @@ const input = ref('')
 const sending = ref(false)
 const errorText = ref('')
 const listEl = ref<HTMLElement | null>(null)
+const inputEl = ref<HTMLTextAreaElement | null>(null)
 const abortController = ref<AbortController | null>(null)
 
 // 대화기록 · 모델 선택을 localStorage에 보존 (브라우저 재방문 시 복원)
@@ -59,27 +61,74 @@ const TOOL_LABELS: Record<string, string> = {
   search_sheet_music: '악보 검색',
 }
 
-// 어시스턴트 답변 속 URL을 링크로, 유튜브 URL은 하단에 임베드로 렌더한다.
-const URL_RE = /https?:\/\/[^\s<>()]+[^\s<>().,!?]/g
+// 어시스턴트 답변의 마크다운을 안전하게 렌더한다. 의존성 없이 직접 파싱하되,
+// 모든 텍스트를 이스케이프하고 고정된 안전 태그(<p>/<ul>/<li>/<h4>/<strong>/<a>)만 생성하므로
+// LLM 출력을 v-html로 넣어도 XSS가 없다(href도 http(s)만 허용).
 const YT_RE = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/g
+const INLINE_RE = /\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)]+)\)|(https?:\/\/[^\s<>()]+[^\s<>().,!?])/g
 
-interface TextPart {
-  text: string
-  href?: string
-}
-const parseText = (content: string): TextPart[] => {
-  const parts: TextPart[] = []
+const escapeHtml = (s: string): string =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+const renderLink = (href: string, text: string): string =>
+  /^https?:\/\//.test(href)
+    ? `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" class="msg-link">${escapeHtml(text)}</a>`
+    : escapeHtml(text)
+
+/** 인라인: **굵게**, [텍스트](링크), 맨링크 → 안전 HTML */
+const renderInline = (s: string): string => {
+  let out = ''
   let last = 0
   let m: RegExpExecArray | null
-  URL_RE.lastIndex = 0
-  while ((m = URL_RE.exec(content))) {
-    if (m.index > last) parts.push({ text: content.slice(last, m.index) })
-    parts.push({ text: m[0], href: m[0] })
+  INLINE_RE.lastIndex = 0
+  while ((m = INLINE_RE.exec(s))) {
+    out += escapeHtml(s.slice(last, m.index))
+    if (m[1] !== undefined) out += `<strong>${escapeHtml(m[1])}</strong>`
+    else if (m[2] !== undefined) out += renderLink(m[3], m[2])
+    else out += renderLink(m[4], m[4])
     last = m.index + m[0].length
   }
-  if (last < content.length) parts.push({ text: content.slice(last) })
-  return parts.length ? parts : [{ text: content }]
+  out += escapeHtml(s.slice(last))
+  return out
 }
+
+/** 블록: 제목(#~####), 불릿(-,*,1.), 문단 → 안전 HTML */
+const renderMarkdown = (content: string): string => {
+  let html = ''
+  let para: string[] = []
+  let list: string[] = []
+  const flushPara = () => {
+    if (para.length) html += `<p>${renderInline(para.join('\n'))}</p>`
+    para = []
+  }
+  const flushList = () => {
+    if (list.length) html += `<ul>${list.map((x) => `<li>${renderInline(x)}</li>`).join('')}</ul>`
+    list = []
+  }
+  for (const raw of content.split('\n')) {
+    const line = raw.replace(/\s+$/, '')
+    const heading = /^(#{1,4})\s+(.*)$/.exec(line)
+    const bullet = /^\s*[-*]\s+(.*)$/.exec(line) ?? /^\s*\d+\.\s+(.*)$/.exec(line)
+    if (heading) {
+      flushPara()
+      flushList()
+      html += `<h4 class="md-h">${renderInline(heading[2])}</h4>`
+    } else if (bullet) {
+      flushPara()
+      list.push(bullet[1])
+    } else if (!line.trim()) {
+      flushPara()
+      flushList()
+    } else {
+      flushList()
+      para.push(line)
+    }
+  }
+  flushPara()
+  flushList()
+  return html
+}
+
 const youtubeIds = (content: string): string[] => {
   const ids: string[] = []
   let m: RegExpExecArray | null
@@ -124,12 +173,30 @@ const scrollToBottom = async () => {
   listEl.value?.scrollTo({ top: listEl.value.scrollHeight, behavior: 'smooth' })
 }
 
+/** 입력창 높이를 내용에 맞춰 위로 늘린다 (최대 높이 넘으면 내부 스크롤). */
+const autoGrow = () => {
+  const el = inputEl.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${Math.min(el.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`
+}
+
+/** Enter 전송, Shift+Enter 줄바꿈. 한글 등 IME 조합 중엔 전송하지 않는다. */
+const onKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+    e.preventDefault()
+    handleSend()
+  }
+}
+
 const handleSend = async (text?: string) => {
   const content = (text ?? input.value).trim()
   if (!content || sending.value) return
 
   errorText.value = ''
   input.value = ''
+  await nextTick()
+  autoGrow() // 전송 후 입력창 높이 원상복구
   const history = [...messages.value]
   messages.value.push({ role: 'user', content })
   persistChat()
@@ -155,6 +222,8 @@ const handleSend = async (text?: string) => {
     messages.value.pop()
     persistChat()
     input.value = content
+    await nextTick()
+    autoGrow()
     if (!canceled) {
       const msg =
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -178,29 +247,28 @@ const cancelSend = () => {
   <div class="page">
     <main class="agent-main">
       <header class="agent-head">
-        <div class="agent-head__title-wrap">
-          <NuxtLink to="/" class="home-link" title="메인으로">← 메인</NuxtLink>
+        <div class="agent-head__left">
+          <NuxtLink to="/" class="home-link" title="메인으로">←</NuxtLink>
           <h1 class="agent-title">노션 AI 에이전트</h1>
-          <p class="agent-subtitle">
-            노션 관리 + 합주실 빈 시간 조회 · 예약 일정을 캘린더 DB에 등록
-          </p>
         </div>
         <div class="agent-head__actions">
-          <label class="model-select">
-            <span class="model-select__label">모델</span>
-            <select v-model="selectedModel" class="model-select__input" :disabled="sending">
-              <option v-for="m in MODELS" :key="m.id" :value="m.id">{{ m.label }}</option>
-            </select>
-          </label>
+          <select
+            v-model="selectedModel"
+            class="model-select"
+            :disabled="sending"
+            aria-label="모델 선택"
+          >
+            <option v-for="m in MODELS" :key="m.id" :value="m.id">{{ m.label }}</option>
+          </select>
           <button
             v-if="ready && messages.length"
             type="button"
-            class="btn btn--ghost"
+            class="chip-btn"
             @click="clearChat"
           >
             새 대화
           </button>
-          <NuxtLink to="/notion-agent/settings" class="btn btn--ghost">설정</NuxtLink>
+          <NuxtLink to="/notion-agent/settings" class="chip-btn">설정</NuxtLink>
         </div>
       </header>
 
@@ -222,100 +290,110 @@ const cancelSend = () => {
 
       <!-- 채팅 -->
       <template v-else>
-        <section ref="listEl" class="chat-list" aria-live="polite">
-          <div v-if="messages.length === 0" class="chat-welcome">
-            <p class="chat-welcome__title">무엇을 도와드릴까요?</p>
-            <div class="chat-suggestions">
-              <button
-                v-for="s in suggestions"
-                :key="s"
-                type="button"
-                class="chat-suggestion"
-                @click="handleSend(s)"
-              >
-                {{ s }}
-              </button>
-            </div>
-          </div>
-
-          <article
-            v-for="(m, i) in messages"
-            :key="i"
-            :class="['chat-msg', m.role === 'user' ? 'chat-msg--user' : 'chat-msg--assistant']"
-          >
-            <div v-if="m.toolCalls?.length" class="chat-tools">
-              <span
-                v-for="(t, j) in m.toolCalls"
-                :key="j"
-                :class="['chat-tool-chip', { 'is-error': !t.ok }]"
-              >
-                {{ TOOL_LABELS[t.tool] ?? t.tool }}
-              </span>
-            </div>
-            <div class="chat-bubble"><template
-                v-for="(p, k) in parseText(m.content)"
-                :key="k"
-              ><a
-                v-if="p.href"
-                :href="p.href"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="chat-link"
-              >{{ p.text }}</a><template v-else>{{ p.text }}</template></template></div>
-
-            <div
-              v-if="m.role === 'assistant' && youtubeIds(m.content).length"
-              class="chat-embeds"
-            >
-              <div v-for="id in youtubeIds(m.content)" :key="id" class="chat-embed">
-                <iframe
-                  :src="`https://www.youtube-nocookie.com/embed/${id}`"
-                  title="YouTube 영상"
-                  loading="lazy"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowfullscreen
-                />
+        <section ref="listEl" class="chat-scroll" aria-live="polite">
+          <div class="chat-thread">
+            <div v-if="messages.length === 0" class="chat-welcome">
+              <h2 class="chat-welcome__title">무엇을 도와드릴까요?</h2>
+              <div class="chat-suggestions">
+                <button
+                  v-for="s in suggestions"
+                  :key="s"
+                  type="button"
+                  class="chat-suggestion"
+                  @click="handleSend(s)"
+                >
+                  {{ s }}
+                </button>
               </div>
             </div>
-          </article>
 
-          <article v-if="sending" class="chat-msg chat-msg--assistant">
-            <div class="chat-bubble chat-bubble--loading">
-              <span class="dot" /><span class="dot" /><span class="dot" />
-              <span class="loading-hint">도구를 사용해 처리 중이에요 · 아래 ‘중단’으로 취소할 수 있어요</span>
-            </div>
-          </article>
+            <article
+              v-for="(m, i) in messages"
+              :key="i"
+              :class="['msg', m.role === 'user' ? 'msg--user' : 'msg--assistant']"
+            >
+              <div v-if="m.toolCalls?.length" class="msg-tools">
+                <span
+                  v-for="(t, j) in m.toolCalls"
+                  :key="j"
+                  :class="['tool-chip', { 'is-error': !t.ok }]"
+                >
+                  {{ TOOL_LABELS[t.tool] ?? t.tool }}
+                </span>
+              </div>
+              <!-- 사용자: 평문 그대로 / 어시스턴트: 마크다운 렌더 -->
+              <div v-if="m.role === 'user'" class="msg-body">{{ m.content }}</div>
+              <!-- eslint-disable-next-line vue/no-v-html (renderMarkdown이 이스케이프+고정태그만 생성) -->
+              <div v-else class="msg-body md" v-html="renderMarkdown(m.content)" />
+
+              <div
+                v-if="m.role === 'assistant' && youtubeIds(m.content).length"
+                class="msg-embeds"
+              >
+                <div v-for="id in youtubeIds(m.content)" :key="id" class="msg-embed">
+                  <iframe
+                    :src="`https://www.youtube-nocookie.com/embed/${id}`"
+                    title="YouTube 영상"
+                    loading="lazy"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen
+                  />
+                </div>
+              </div>
+            </article>
+
+            <article v-if="sending" class="msg msg--assistant">
+              <div class="msg-loading">
+                <span class="dot" /><span class="dot" /><span class="dot" />
+                <span class="loading-hint">처리 중이에요 · 아래 ‘중단’으로 취소할 수 있어요</span>
+              </div>
+            </article>
+          </div>
         </section>
 
-        <p v-if="errorText" class="chat-error" role="alert">{{ errorText }}</p>
-
-        <form class="chat-input-bar" @submit.prevent="handleSend()">
-          <input
-            v-model="input"
-            type="text"
-            class="chat-input"
-            placeholder="예: 이번 주말 합주실 빈 시간 찾아서 캘린더에 등록해줘"
-            :disabled="sending"
-          />
-          <button
-            v-if="sending"
-            type="button"
-            class="btn chat-send chat-stop"
-            title="검색 중단"
-            @click="cancelSend"
-          >
-            <span class="stop-icon" aria-hidden="true" />
-            중단
-          </button>
-          <button
-            v-else
-            type="submit"
-            class="btn btn--primary chat-send"
-            :disabled="!input.trim()"
-          >
-            전송
-          </button>
-        </form>
+        <div class="composer-wrap">
+          <p v-if="errorText" class="chat-error" role="alert">{{ errorText }}</p>
+          <form class="composer" @submit.prevent="handleSend()">
+            <textarea
+              ref="inputEl"
+              v-model="input"
+              class="composer__input"
+              rows="1"
+              placeholder="메시지를 입력하세요…"
+              :disabled="sending"
+              @keydown="onKeydown"
+              @input="autoGrow"
+            />
+            <button
+              v-if="sending"
+              type="button"
+              class="composer__btn composer__btn--stop"
+              title="중단"
+              @click="cancelSend"
+            >
+              <span class="stop-square" aria-hidden="true" />
+            </button>
+            <button
+              v-else
+              type="submit"
+              class="composer__btn"
+              title="전송 (Enter)"
+              :disabled="!input.trim()"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path
+                  d="M12 19V5M5 12l7-7 7 7"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+          </form>
+          <p class="composer__hint">Enter 전송 · Shift+Enter 줄바꿈</p>
+        </div>
       </template>
     </main>
   </div>
@@ -323,85 +401,108 @@ const cancelSend = () => {
 
 <style scoped>
 .agent-main {
-  max-width: 760px;
+  max-width: 768px;
   margin: 0 auto;
-  padding: var(--space-lg);
+  padding: 0 var(--space-base);
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 80px);
+  height: calc(100vh - 80px);
+  height: calc(100dvh - 80px);
+  min-height: 0;
 }
 
+/* ── 헤더 ── */
 .agent-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-base);
-  margin-bottom: var(--space-lg);
-  flex-wrap: wrap;
+  padding: var(--space-base) 0;
+  flex-shrink: 0;
+}
+
+.agent-head__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
 }
 
 .home-link {
-  display: inline-block;
-  margin-bottom: var(--space-xs);
-  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
   color: var(--muted);
   text-decoration: none;
-  transition: color 120ms ease;
+  font-size: 16px;
+  transition: background-color 120ms ease, color 120ms ease;
 }
 
 .home-link:hover {
+  background: var(--surface-soft);
   color: var(--ink);
 }
 
 .agent-title {
-  margin: 0 0 var(--space-xs);
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.agent-subtitle {
   margin: 0;
-  font-size: 13px;
-  color: var(--muted);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .agent-head__actions {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  flex-wrap: wrap;
+  gap: var(--space-xs);
+  flex-shrink: 0;
 }
 
 .model-select {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
-}
-
-.model-select__label {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.model-select__input {
-  padding: var(--space-sm) var(--space-md);
+  padding: 6px 10px;
   border: 1px solid var(--hairline);
-  border-radius: 8px;
+  border-radius: 9999px;
   background: var(--canvas);
   color: var(--ink);
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   outline: none;
+  max-width: 150px;
 }
 
-.model-select__input:focus {
+.model-select:focus {
   border-color: var(--ink);
+}
+
+.chip-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 9999px;
+  background: var(--canvas);
+  color: var(--body-text);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.chip-btn:hover {
+  border-color: var(--ink);
+  background: var(--surface-soft);
 }
 
 /* ── 온보딩/빈 상태 ── */
 .agent-empty {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -409,14 +510,11 @@ const cancelSend = () => {
   gap: var(--space-base);
   text-align: center;
   padding: var(--space-2xl) var(--space-lg);
-  border: 1px dashed var(--hairline);
-  border-radius: 14px;
-  background: var(--surface-soft);
 }
 
 .agent-empty__title {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--ink);
 }
@@ -429,24 +527,31 @@ const cancelSend = () => {
   max-width: 420px;
 }
 
-/* ── 채팅 목록 ── */
-.chat-list {
+/* ── 채팅 스크롤 영역 (입력창이 커지면 이 영역이 줄고, 내용은 위로 스크롤) ── */
+.chat-scroll {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  padding: var(--space-sm) 0 var(--space-base);
+  overflow-x: hidden;
 }
 
+.chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  padding: var(--space-lg) 0 var(--space-base);
+}
+
+/* ── 웰컴 ── */
 .chat-welcome {
   margin: auto 0;
   text-align: center;
+  padding: var(--space-2xl) 0;
 }
 
 .chat-welcome__title {
-  margin: 0 0 var(--space-base);
-  font-size: 16px;
+  margin: 0 0 var(--space-lg);
+  font-size: 22px;
   font-weight: 600;
   color: var(--ink);
 }
@@ -459,14 +564,16 @@ const cancelSend = () => {
 }
 
 .chat-suggestion {
-  padding: var(--space-sm) var(--space-base);
+  padding: 10px 16px;
   border: 1px solid var(--hairline);
-  border-radius: 9999px;
+  border-radius: 12px;
   background: var(--canvas);
   color: var(--body-text);
   font-size: 13px;
+  text-align: left;
   cursor: pointer;
   transition: border-color 120ms ease, background-color 120ms ease;
+  max-width: 100%;
 }
 
 .chat-suggestion:hover {
@@ -474,66 +581,116 @@ const cancelSend = () => {
   background: var(--surface-soft);
 }
 
-.chat-msg {
+/* ── 메시지 ── */
+.msg {
   display: flex;
   flex-direction: column;
-  max-width: 85%;
 }
 
-.chat-msg--user {
-  align-self: flex-end;
+/* 사용자: 오른쪽 정렬 + 부드러운 말풍선 */
+.msg--user {
   align-items: flex-end;
 }
 
-.chat-msg--assistant {
-  align-self: flex-start;
-  align-items: flex-start;
+.msg--user .msg-body {
+  max-width: 85%;
+  padding: 10px 16px;
+  border-radius: 18px;
+  border-bottom-right-radius: 6px;
+  background: var(--surface-soft);
+  border: 1px solid var(--hairline-soft);
+  color: var(--ink);
 }
 
-.chat-bubble {
-  padding: var(--space-md) var(--space-base);
-  border-radius: 14px;
-  font-size: 14px;
-  line-height: 1.6;
+/* 어시스턴트: 말풍선 없이 평문 (클로드 스타일) */
+.msg--assistant .msg-body {
+  color: var(--ink);
+}
+
+.msg-body {
+  font-size: 15px;
+  line-height: 1.7;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.chat-msg--user .chat-bubble {
-  background: var(--ink);
-  color: #ffffff;
-  border-bottom-right-radius: 4px;
-}
-
-.chat-msg--assistant .chat-bubble {
-  background: var(--surface-soft);
-  color: var(--ink);
-  border: 1px solid var(--hairline-soft);
-  border-bottom-left-radius: 4px;
-}
-
-.chat-link {
+.msg-link {
   color: var(--primary);
   text-decoration: underline;
   text-underline-offset: 2px;
   word-break: break-all;
 }
 
-.chat-msg--user .chat-link {
-  color: #ffffff;
+/* ── 마크다운 렌더 (어시스턴트 답변) ── */
+.msg-body.md {
+  white-space: normal;
+}
+
+.md :deep(p) {
+  margin: 0 0 0.75em;
+  white-space: pre-line;
+}
+
+.md :deep(p:last-child),
+.md :deep(ul:last-child) {
+  margin-bottom: 0;
+}
+
+.md :deep(.md-h) {
+  margin: 1.1em 0 0.5em;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.md :deep(ul) {
+  margin: 0 0 0.75em;
+  padding-left: 1.3em;
+}
+
+.md :deep(li) {
+  margin: 0.2em 0;
+}
+
+.md :deep(strong) {
+  font-weight: 700;
+}
+
+/* ── 도구 호출 칩 ── */
+.msg-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.tool-chip {
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(255, 56, 92, 0.08);
+  color: var(--primary);
+  border: 1px solid rgba(255, 56, 92, 0.22);
+}
+
+.tool-chip.is-error {
+  background: var(--surface-strong);
+  color: var(--muted);
+  border-color: var(--hairline);
 }
 
 /* ── 유튜브 임베드 ── */
-.chat-embeds {
+.msg-embeds {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
-  margin-top: var(--space-sm);
+  margin-top: var(--space-md);
   width: 100%;
   max-width: 480px;
 }
 
-.chat-embed {
+.msg-embed {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -543,7 +700,7 @@ const cancelSend = () => {
   border: 1px solid var(--hairline-soft);
 }
 
-.chat-embed iframe {
+.msg-embed iframe {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -551,35 +708,12 @@ const cancelSend = () => {
   border: 0;
 }
 
-/* ── 도구 호출 칩 ── */
-.chat-tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-xs);
-}
-
-.chat-tool-chip {
-  padding: 2px 8px;
-  border-radius: 9999px;
-  font-size: 11px;
-  font-weight: 600;
-  background: rgba(255, 56, 92, 0.08);
-  color: var(--primary);
-  border: 1px solid rgba(255, 56, 92, 0.22);
-}
-
-.chat-tool-chip.is-error {
-  background: var(--surface-strong);
-  color: var(--muted);
-  border-color: var(--hairline);
-}
-
 /* ── 로딩 ── */
-.chat-bubble--loading {
+.msg-loading {
   display: flex;
   align-items: center;
   gap: var(--space-xs);
+  padding: 2px 0;
 }
 
 .dot {
@@ -617,71 +751,114 @@ const cancelSend = () => {
   }
 }
 
-/* ── 입력 바 ── */
+/* ── 입력 영역 (하단 고정, textarea가 위로 늘어남) ── */
+.composer-wrap {
+  flex-shrink: 0;
+  padding: var(--space-sm) 0 var(--space-base);
+  background: var(--canvas);
+}
+
 .chat-error {
   margin: 0 0 var(--space-sm);
   font-size: 13px;
   color: var(--error);
+  text-align: center;
 }
 
-.chat-input-bar {
+.composer {
   display: flex;
+  align-items: flex-end;
   gap: var(--space-sm);
-  padding-top: var(--space-sm);
-  border-top: 1px solid var(--hairline-soft);
-  position: sticky;
-  bottom: 0;
-  background: var(--canvas);
-  padding-bottom: var(--space-base);
-}
-
-.chat-input {
-  flex: 1;
-  padding: var(--space-md) var(--space-base);
+  padding: 8px 8px 8px 16px;
   border: 1px solid var(--hairline);
-  border-radius: 9999px;
-  font-size: 14px;
-  color: var(--ink);
-  outline: none;
-  transition: border-color 120ms ease;
+  border-radius: 24px;
+  background: var(--canvas);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 
-.chat-input:focus {
+.composer:focus-within {
   border-color: var(--ink);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
 }
 
-.chat-send {
+.composer__input {
+  flex: 1;
+  min-height: 24px;
+  max-height: 200px;
+  padding: 8px 0;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.5;
+  font-family: inherit;
+  overflow-y: auto;
+}
+
+.composer__input::placeholder {
+  color: var(--muted-soft);
+}
+
+.composer__input:disabled {
+  color: var(--muted);
+}
+
+.composer__btn {
   flex-shrink: 0;
-}
-
-.chat-stop {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  background: var(--surface-strong);
-  color: var(--ink);
-  border: 1px solid var(--hairline);
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  border: none;
+  background: var(--ink);
+  color: #ffffff;
+  cursor: pointer;
+  transition: opacity 120ms ease, background-color 120ms ease;
 }
 
-.chat-stop:hover {
-  background: var(--surface-soft);
-  border-color: var(--ink);
+.composer__btn:hover:not(:disabled) {
+  opacity: 0.85;
 }
 
-.stop-icon {
-  width: 9px;
-  height: 9px;
-  border-radius: 2px;
-  background: var(--error);
+.composer__btn:disabled {
+  background: var(--hairline);
+  color: var(--muted-soft);
+  cursor: not-allowed;
+}
+
+.composer__btn--stop {
+  background: var(--ink);
+}
+
+.stop-square {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: #ffffff;
+}
+
+.composer__hint {
+  margin: var(--space-xs) 0 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted-soft);
 }
 
 @media (max-width: 480px) {
   .agent-main {
-    padding: var(--space-base);
+    padding: 0 var(--space-sm);
   }
 
-  .chat-msg {
-    max-width: 95%;
+  .agent-title {
+    font-size: 15px;
+  }
+
+  .composer__hint {
+    display: none;
   }
 }
 </style>
