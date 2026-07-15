@@ -159,8 +159,9 @@ onMounted(async () => {
     // 파싱 실패 시 무시하고 빈 대화로 시작
   }
   try {
+    // LLM(Gemini) 키만 있으면 대화 시작 가능. 노션·유튜브는 도구 사용 시 안내한다.
     const s = await fetchStatus()
-    ready.value = s.hasNotionToken && s.hasGeminiKey
+    ready.value = s.hasGeminiKey
   } catch {
     ready.value = false
   } finally {
@@ -277,15 +278,14 @@ const cancelSend = () => {
         <p class="agent-empty__text">연결 상태 확인 중…</p>
       </section>
 
-      <!-- 미설정: 온보딩 -->
+      <!-- 미설정: 온보딩 (Gemini 키만 있으면 시작) -->
       <section v-else-if="!ready" class="agent-empty">
-        <h2 class="agent-empty__title">시작하려면 연결이 필요해요</h2>
+        <h2 class="agent-empty__title">시작하려면 Gemini API 키가 필요해요</h2>
         <p class="agent-empty__text">
-          노션 Integration 토큰{{ status?.hasNotionToken ? ' ✓' : '' }}과 Gemini API 키{{
-            status?.hasGeminiKey ? ' ✓' : ''
-          }}를 등록하면 에이전트가 노션을 관리할 수 있습니다.
+          Gemini API 키{{ status?.hasGeminiKey ? ' ✓' : '' }}만 등록하면 대화를 시작할 수 있어요.
+          노션·유튜브 기능은 각 토큰을 추가로 입력하면 켜집니다.
         </p>
-        <NuxtLink to="/notion-agent/settings" class="btn btn--primary">토큰 등록하기</NuxtLink>
+        <NuxtLink to="/notion-agent/settings" class="btn btn--primary">키 등록하기</NuxtLink>
       </section>
 
       <!-- 채팅 -->
