@@ -13,6 +13,7 @@ const { status, fetchStatus, saveCredentials, deleteCredentials } = useNotionAge
 
 const notionToken = ref('')
 const geminiKey = ref('')
+const youtubeKey = ref('')
 const saving = ref(false)
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -26,19 +27,21 @@ onMounted(async () => {
 })
 
 const handleSave = async () => {
-  if (!notionToken.value && !geminiKey.value) {
+  if (!notionToken.value && !geminiKey.value && !youtubeKey.value) {
     message.value = { type: 'error', text: '저장할 값을 입력해주세요.' }
     return
   }
   saving.value = true
   message.value = null
   try {
-    const dto: { notionToken?: string; geminiKey?: string } = {}
+    const dto: { notionToken?: string; geminiKey?: string; youtubeKey?: string } = {}
     if (notionToken.value) dto.notionToken = notionToken.value.trim()
     if (geminiKey.value) dto.geminiKey = geminiKey.value.trim()
+    if (youtubeKey.value) dto.youtubeKey = youtubeKey.value.trim()
     await saveCredentials(dto)
     notionToken.value = ''
     geminiKey.value = ''
+    youtubeKey.value = ''
     await fetchStatus()
     message.value = { type: 'success', text: '저장했어요. 이제 에이전트와 대화할 수 있습니다.' }
   } catch {
@@ -86,6 +89,10 @@ const handleDelete = async () => {
             <span :class="['status-dot', status?.hasGeminiKey ? 'is-on' : 'is-off']" />
             Gemini API 키: <strong>{{ status?.hasGeminiKey ? '연결됨' : '미설정' }}</strong>
           </li>
+          <li class="status-item">
+            <span :class="['status-dot', status?.hasYoutubeKey ? 'is-on' : 'is-off']" />
+            YouTube API 키: <strong>{{ status?.hasYoutubeKey ? '연결됨' : '미설정 (선택)' }}</strong>
+          </li>
         </ul>
       </section>
 
@@ -124,6 +131,23 @@ const handleDelete = async () => {
           </p>
         </div>
 
+        <div class="form-field">
+          <label class="form-label" for="youtube-key">YouTube API 키 <span class="form-optional">(선택)</span></label>
+          <input
+            id="youtube-key"
+            v-model="youtubeKey"
+            type="password"
+            class="form-input"
+            placeholder="AIza…"
+            autocomplete="off"
+          />
+          <p class="form-hint">
+            <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener">
+              YouTube Data API v3</a
+            >를 사용 설정하고 발급한 키. 곡·악기 커버 영상 검색에 씁니다. 없으면 영상 검색만 비활성화돼요.
+          </p>
+        </div>
+
         <p v-if="message" :class="['form-message', `is-${message.type}`]">{{ message.text }}</p>
 
         <div class="form-actions">
@@ -131,7 +155,7 @@ const handleDelete = async () => {
             {{ saving ? '저장 중…' : '저장' }}
           </button>
           <button
-            v-if="status?.hasNotionToken || status?.hasGeminiKey"
+            v-if="status?.hasNotionToken || status?.hasGeminiKey || status?.hasYoutubeKey"
             type="button"
             class="btn btn--ghost"
             @click="handleDelete"
@@ -232,6 +256,11 @@ const handleDelete = async () => {
   font-size: 14px;
   font-weight: 600;
   color: var(--ink);
+}
+
+.form-optional {
+  font-weight: 400;
+  color: var(--muted-soft);
 }
 
 .form-input {
