@@ -4,6 +4,7 @@ import { useApi, useEncrypt } from './useUtil'
 export interface CredentialStatus {
   hasNotionToken: boolean
   hasGeminiKey: boolean
+  hasYoutubeKey: boolean
   notionWorkspace: string | null
 }
 
@@ -45,6 +46,7 @@ export const useNotionAgent = () => {
   const saveCredentials = async (dto: {
     notionToken?: string
     geminiKey?: string
+    youtubeKey?: string
   }): Promise<void> => {
     await api.put('/notion-agent/credentials', encryptRequest(dto))
   }

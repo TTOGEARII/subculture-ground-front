@@ -54,6 +54,37 @@ const TOOL_LABELS: Record<string, string> = {
   search_studios: '합주실 검색',
   get_available_slots: '빈 시간 조회',
   get_reservation_url: '예약 링크',
+  search_youtube: '유튜브 검색',
+  search_sheet_music: '악보 검색',
+}
+
+// 어시스턴트 답변 속 URL을 링크로, 유튜브 URL은 하단에 임베드로 렌더한다.
+const URL_RE = /https?:\/\/[^\s<>()]+[^\s<>().,!?]/g
+const YT_RE = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/g
+
+interface TextPart {
+  text: string
+  href?: string
+}
+const parseText = (content: string): TextPart[] => {
+  const parts: TextPart[] = []
+  let last = 0
+  let m: RegExpExecArray | null
+  URL_RE.lastIndex = 0
+  while ((m = URL_RE.exec(content))) {
+    if (m.index > last) parts.push({ text: content.slice(last, m.index) })
+    parts.push({ text: m[0], href: m[0] })
+    last = m.index + m[0].length
+  }
+  if (last < content.length) parts.push({ text: content.slice(last) })
+  return parts.length ? parts : [{ text: content }]
+}
+const youtubeIds = (content: string): string[] => {
+  const ids: string[] = []
+  let m: RegExpExecArray | null
+  YT_RE.lastIndex = 0
+  while ((m = YT_RE.exec(content))) if (!ids.includes(m[1])) ids.push(m[1])
+  return ids
 }
 
 const suggestions = [
@@ -202,7 +233,31 @@ const handleSend = async (text?: string) => {
                 {{ TOOL_LABELS[t.tool] ?? t.tool }}
               </span>
             </div>
-            <div class="chat-bubble">{{ m.content }}</div>
+            <div class="chat-bubble"><template
+                v-for="(p, k) in parseText(m.content)"
+                :key="k"
+              ><a
+                v-if="p.href"
+                :href="p.href"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="chat-link"
+              >{{ p.text }}</a><template v-else>{{ p.text }}</template></template></div>
+
+            <div
+              v-if="m.role === 'assistant' && youtubeIds(m.content).length"
+              class="chat-embeds"
+            >
+              <div v-for="id in youtubeIds(m.content)" :key="id" class="chat-embed">
+                <iframe
+                  :src="`https://www.youtube-nocookie.com/embed/${id}`"
+                  title="YouTube 영상"
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen
+                />
+              </div>
+            </div>
           </article>
 
           <article v-if="sending" class="chat-msg chat-msg--assistant">
@@ -421,6 +476,45 @@ const handleSend = async (text?: string) => {
   color: var(--ink);
   border: 1px solid var(--hairline-soft);
   border-bottom-left-radius: 4px;
+}
+
+.chat-link {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}
+
+.chat-msg--user .chat-link {
+  color: #ffffff;
+}
+
+/* ── 유튜브 임베드 ── */
+.chat-embeds {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+  width: 100%;
+  max-width: 480px;
+}
+
+.chat-embed {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--hairline-soft);
+}
+
+.chat-embed iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
 }
 
 /* ── 도구 호출 칩 ── */
