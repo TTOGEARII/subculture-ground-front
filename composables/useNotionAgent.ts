@@ -56,11 +56,15 @@ export const useNotionAgent = () => {
     status.value = null
   }
 
-  /** 에이전트에게 메시지 전송. 도구 호출이 있으면 수십 초 걸릴 수 있어 타임아웃을 넉넉히 준다. */
+  /**
+   * 에이전트에게 메시지 전송. 도구 호출이 있으면 수십 초 걸릴 수 있어 타임아웃을 넉넉히 준다.
+   * signal로 검색 도중 취소할 수 있다(취소 시 axios가 CanceledError를 던진다).
+   */
   const sendMessage = async (
     message: string,
     history: ChatMessage[],
     model?: string,
+    signal?: AbortSignal,
   ): Promise<{ reply: string; toolCalls: ToolCallTrace[] }> => {
     const { data } = await api.post<{ reply: string; toolCalls: ToolCallTrace[] }>(
       '/notion-agent/chat',
@@ -70,7 +74,7 @@ export const useNotionAgent = () => {
         history: history.map((m) => ({ role: m.role, content: m.content })),
         model,
       },
-      { timeout: 300_000 },
+      { timeout: 300_000, signal },
     )
     return data
   }

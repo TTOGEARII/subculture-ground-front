@@ -27,6 +27,7 @@ const input = ref('')
 const sending = ref(false)
 const errorText = ref('')
 const listEl = ref<HTMLElement | null>(null)
+const abortController = ref<AbortController | null>(null)
 
 // 대화기록 · 모델 선택을 localStorage에 보존 (브라우저 재방문 시 복원)
 const persistChat = () => {
@@ -133,25 +134,43 @@ const handleSend = async (text?: string) => {
   messages.value.push({ role: 'user', content })
   persistChat()
   sending.value = true
+  abortController.value = new AbortController()
   await scrollToBottom()
 
   try {
-    const { reply, toolCalls } = await sendMessage(content, history, selectedModel.value)
+    const { reply, toolCalls } = await sendMessage(
+      content,
+      history,
+      selectedModel.value,
+      abortController.value.signal,
+    )
     messages.value.push({ role: 'assistant', content: reply, toolCalls })
     persistChat()
   } catch (error: unknown) {
-    const msg =
-      (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-      '요청 처리에 실패했어요. 잠시 후 다시 시도해주세요.'
-    errorText.value = Array.isArray(msg) ? msg.join(', ') : String(msg)
-    // 실패한 사용자 메시지는 입력창에 복원
+    // 사용자가 취소한 경우: 에러로 취급하지 않고 입력만 복원한다
+    const canceled =
+      (error as { code?: string })?.code === 'ERR_CANCELED' ||
+      (error as { name?: string })?.name === 'CanceledError'
+    // 대기 중이던 사용자 메시지는 되돌리고 입력창에 복원
     messages.value.pop()
     persistChat()
     input.value = content
+    if (!canceled) {
+      const msg =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        '요청 처리에 실패했어요. 잠시 후 다시 시도해주세요.'
+      errorText.value = Array.isArray(msg) ? msg.join(', ') : String(msg)
+    }
   } finally {
     sending.value = false
+    abortController.value = null
     await scrollToBottom()
   }
+}
+
+/** 검색 도중 취소 */
+const cancelSend = () => {
+  abortController.value?.abort()
 }
 </script>
 
@@ -263,7 +282,7 @@ const handleSend = async (text?: string) => {
           <article v-if="sending" class="chat-msg chat-msg--assistant">
             <div class="chat-bubble chat-bubble--loading">
               <span class="dot" /><span class="dot" /><span class="dot" />
-              <span class="loading-hint">도구를 사용해 처리 중이에요 (최대 수십 초)</span>
+              <span class="loading-hint">도구를 사용해 처리 중이에요 · 아래 ‘중단’으로 취소할 수 있어요</span>
             </div>
           </article>
         </section>
@@ -278,7 +297,22 @@ const handleSend = async (text?: string) => {
             placeholder="예: 이번 주말 합주실 빈 시간 찾아서 캘린더에 등록해줘"
             :disabled="sending"
           />
-          <button type="submit" class="btn btn--primary chat-send" :disabled="sending || !input.trim()">
+          <button
+            v-if="sending"
+            type="button"
+            class="btn chat-send chat-stop"
+            title="검색 중단"
+            @click="cancelSend"
+          >
+            <span class="stop-icon" aria-hidden="true" />
+            중단
+          </button>
+          <button
+            v-else
+            type="submit"
+            class="btn btn--primary chat-send"
+            :disabled="!input.trim()"
+          >
             전송
           </button>
         </form>
@@ -618,6 +652,27 @@ const handleSend = async (text?: string) => {
 
 .chat-send {
   flex-shrink: 0;
+}
+
+.chat-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-strong);
+  color: var(--ink);
+  border: 1px solid var(--hairline);
+}
+
+.chat-stop:hover {
+  background: var(--surface-soft);
+  border-color: var(--ink);
+}
+
+.stop-icon {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--error);
 }
 
 @media (max-width: 480px) {
