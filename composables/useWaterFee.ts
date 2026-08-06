@@ -110,6 +110,19 @@ export const useWaterFee = () => {
     return data
   }
 
+  /** 명세서를 엑셀(xlsx)로 내려받아 파일 저장 트리거 */
+  const downloadExcel = async (ym: string): Promise<void> => {
+    const res = await api.get(`${stmts}/${ym}/excel`, { responseType: 'blob' })
+    const url = URL.createObjectURL(res.data as Blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `중앙그린빌라_수도요금_${ym}.xlsx`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
   // ── 세대 식별 ──
   const verifyHousehold = async (unitNo: string, residentId: string): Promise<Me> => {
     const { data } = await api.post<Me>(`${base}/households/verify`, { unitNo, residentId })
@@ -158,6 +171,7 @@ export const useWaterFee = () => {
     listStatements,
     getStatement,
     getUnitHistory,
+    downloadExcel,
     verifyHousehold,
     saveMyReading,
     createStatement,
