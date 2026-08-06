@@ -1,5 +1,10 @@
 import { useApi } from './useUtil'
 
+export interface ExtraCost {
+  name: string
+  amount: number
+}
+
 export interface UnitRow {
   unitNo: string
   prevReading: number
@@ -11,6 +16,7 @@ export interface UnitRow {
   water: number
   labor: number
   elecStair: number
+  extra: number
   payment: number
   isManager: boolean
 }
@@ -22,16 +28,19 @@ export interface Statement {
   bureauTotalTons: number
   stairCleaningFee: number
   managerUnit: string
+  extraCosts: ExtraCost[]
   perTon: number
   meteredTons: number
   bureauDiff: number
   totalLaborFee: number
+  totalExtra: number
   rows: UnitRow[]
   totals: {
     usage: number
     water: number
     labor: number
     elecStair: number
+    extra: number
     other: number
     discount: number
     payment: number
@@ -134,6 +143,10 @@ export const useWaterFee = () => {
     const { data } = await api.put<Statement>(`${stmts}/${ym}/manager`, { managerUnit, identity: idOnly(me) })
     return data
   }
+  const saveExtraCosts = async (ym: string, me: Identity, extraCosts: ExtraCost[]): Promise<Statement> => {
+    const { data } = await api.put<Statement>(`${stmts}/${ym}/extra-costs`, { extraCosts, identity: idOnly(me) })
+    return data
+  }
   const deleteStatement = async (ym: string, me: Identity): Promise<void> => {
     await api.delete(`${stmts}/${ym}`, { data: { identity: idOnly(me) } })
   }
@@ -151,6 +164,7 @@ export const useWaterFee = () => {
     saveGlobals,
     saveUnit,
     setManager,
+    saveExtraCosts,
     deleteStatement,
     resetHousehold,
   }
