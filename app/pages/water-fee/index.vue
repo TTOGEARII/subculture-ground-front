@@ -14,9 +14,23 @@ definePageMeta({ layout: 'main' })
 useSeoMeta({ title: '중앙그린빌라 수도요금 - Subculture Ground' })
 
 const {
-  listStatements, getStatement, getUnitHistory, verifyHousehold, saveMyReading,
+  listStatements, getStatement, getUnitHistory, downloadExcel, verifyHousehold, saveMyReading,
   createStatement, saveGlobals, saveUnit, setManager, saveExtraCosts, resetHousehold,
 } = useWaterFee()
+
+const downloading = ref(false)
+const doDownload = async () => {
+  if (!statement.value) return
+  downloading.value = true
+  errorText.value = ''
+  try {
+    await downloadExcel(statement.value.yearMonth)
+  } catch {
+    errorText.value = '엑셀 다운로드에 실패했어요.'
+  } finally {
+    downloading.value = false
+  }
+}
 
 /** 15세대 (식별 화면 선택용) */
 const UNIT_NUMBERS = [
@@ -339,6 +353,9 @@ function errMsg(e: unknown, fallback: string): string {
               <option v-for="m in months" :key="m.yearMonth" :value="m.yearMonth">{{ m.yearMonth }}</option>
             </select>
             <span v-if="saving" class="wf-saving">저장 중…</span>
+            <button v-if="statement" type="button" class="wf-btn" :disabled="downloading" @click="doDownload">
+              {{ downloading ? '엑셀 만드는 중…' : '⬇ 엑셀 다운로드' }}
+            </button>
             <button v-if="me.isManager" type="button" class="wf-btn" :disabled="saving" @click="createNext">＋ 새 달</button>
           </div>
         </div>
