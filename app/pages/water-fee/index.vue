@@ -24,7 +24,7 @@ const doDownload = async () => {
   downloading.value = true
   errorText.value = ''
   try {
-    await downloadExcel(statement.value.yearMonth)
+    await downloadExcel(statement.value.yearMonth, me.value ?? undefined)
   } catch {
     errorText.value = '엑셀 다운로드에 실패했어요.'
   } finally {
@@ -429,7 +429,8 @@ function errMsg(e: unknown, fallback: string): string {
                   <th>호수</th><th>이전검침</th><th>현재검침</th><th>사용량<br />(t)</th>
                   <th>수도료</th><th>수고비</th><th>전기/계단</th>
                   <th v-if="statement.totalExtra > 0">추가</th>
-                  <th>감면</th><th>납입액</th><th>가구수</th>
+                  <th>감면</th><th>납입액</th>
+                  <th v-if="me.isManager">가구수</th>
                 </tr>
               </thead>
               <tbody>
@@ -452,7 +453,6 @@ function errMsg(e: unknown, fallback: string): string {
                   <td v-else class="wf-num">{{ won(row.discount) }}</td>
                   <td class="wf-num wf-pay">{{ won(row.payment) }}</td>
                   <td v-if="me.isManager"><input v-model.number="row.households" type="number" class="wf-cell wf-cell--sm" @change="saveU(row, 'households')" /></td>
-                  <td v-else class="wf-num">{{ row.households }}</td>
                 </tr>
               </tbody>
               <tfoot>
@@ -465,7 +465,7 @@ function errMsg(e: unknown, fallback: string): string {
                   <td v-if="statement.totalExtra > 0" class="wf-num">{{ won(statement.totals.extra) }}</td>
                   <td class="wf-num">{{ won(statement.totals.discount) }}</td>
                   <td class="wf-num wf-pay">{{ won(statement.totals.payment) }}</td>
-                  <td class="wf-num">{{ statement.totals.households }}</td>
+                  <td v-if="me.isManager" class="wf-num">{{ statement.totals.households }}</td>
                 </tr>
               </tfoot>
             </table>
