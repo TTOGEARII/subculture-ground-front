@@ -83,6 +83,10 @@ export const useWaterFee = () => {
   const base = '/water-fee'
   const stmts = `${base}/statements`
 
+  // me에는 isManager가 붙어 있으므로, 서버에는 신원 두 필드만 보낸다.
+  // (백엔드 ValidationPipe가 forbidNonWhitelisted라 isManager를 그대로 보내면 거부된다)
+  const idOnly = (me: Identity) => ({ unitNo: me.unitNo, residentId: me.residentId })
+
   // ── 조회 (공개) ──
   const listStatements = async (): Promise<StatementSummary[]> => {
     const { data } = await api.get<StatementSummary[]>(stmts)
@@ -115,26 +119,26 @@ export const useWaterFee = () => {
 
   // ── 관리자(반장) 전용 — 신원 동봉 ──
   const createStatement = async (ym: string, me: Identity, globals?: GlobalPatch): Promise<Statement> => {
-    const { data } = await api.post<Statement>(stmts, { yearMonth: ym, ...globals, identity: me })
+    const { data } = await api.post<Statement>(stmts, { yearMonth: ym, ...globals, identity: idOnly(me) })
     return data
   }
   const saveGlobals = async (ym: string, me: Identity, patch: GlobalPatch): Promise<Statement> => {
-    const { data } = await api.put<Statement>(`${stmts}/${ym}`, { ...patch, identity: me })
+    const { data } = await api.put<Statement>(`${stmts}/${ym}`, { ...patch, identity: idOnly(me) })
     return data
   }
   const saveUnit = async (ym: string, me: Identity, unitNo: string, patch: UnitPatch): Promise<Statement> => {
-    const { data } = await api.put<Statement>(`${stmts}/${ym}/units/${unitNo}`, { ...patch, identity: me })
+    const { data } = await api.put<Statement>(`${stmts}/${ym}/units/${unitNo}`, { ...patch, identity: idOnly(me) })
     return data
   }
   const setManager = async (ym: string, me: Identity, managerUnit: string): Promise<Statement> => {
-    const { data } = await api.put<Statement>(`${stmts}/${ym}/manager`, { managerUnit, identity: me })
+    const { data } = await api.put<Statement>(`${stmts}/${ym}/manager`, { managerUnit, identity: idOnly(me) })
     return data
   }
   const deleteStatement = async (ym: string, me: Identity): Promise<void> => {
-    await api.delete(`${stmts}/${ym}`, { data: { identity: me } })
+    await api.delete(`${stmts}/${ym}`, { data: { identity: idOnly(me) } })
   }
   const resetHousehold = async (unitNo: string, me: Identity): Promise<void> => {
-    await api.post(`${base}/households/${unitNo}/reset`, { identity: me })
+    await api.post(`${base}/households/${unitNo}/reset`, { identity: idOnly(me) })
   }
 
   return {
