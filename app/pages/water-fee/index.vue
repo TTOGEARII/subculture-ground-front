@@ -6,6 +6,7 @@ import {
   type StatementSummary,
   type UnitRow,
   type HistoryRow,
+  type ExtraCost,
   type Me,
 } from '../../../composables/useWaterFee'
 
@@ -14,7 +15,7 @@ useSeoMeta({ title: '중앙그린빌라 수도요금 - Subculture Ground' })
 
 const {
   listStatements, getStatement, getUnitHistory, verifyHousehold, saveMyReading,
-  createStatement, saveGlobals, saveUnit, setManager, resetHousehold,
+  createStatement, saveGlobals, saveUnit, setManager, saveExtraCosts, resetHousehold,
 } = useWaterFee()
 
 /** 15세대 (식별 화면 선택용) */
@@ -47,6 +48,9 @@ const idError = ref('')
 // 내 검침 입력
 const readingInput = ref<number | null>(null)
 
+// 추가비용 편집 초안(반장) — 서버 저장본을 화면에서 편집
+const extraDraft = ref<ExtraCost[]>([])
+
 const won = (n: number) => Math.round(n).toLocaleString('ko-KR')
 const dec1 = (n: number) => (Math.round(n * 10) / 10).toLocaleString('ko-KR', { minimumFractionDigits: 1 })
 
@@ -74,6 +78,7 @@ const load = async (ym: string) => {
   statement.value = await getStatement(ym)
   selectedMonth.value = ym
   readingInput.value = myRow.value ? myRow.value.currReading : null
+  extraDraft.value = (statement.value.extraCosts ?? []).map((c) => ({ ...c }))
 }
 watch(selectedMonth, (ym) => {
   if (ym && ym !== statement.value?.yearMonth) load(ym).catch(() => (errorText.value = '불러오기 실패'))
@@ -174,6 +179,24 @@ const changeManager = async (e: Event) => {
     localStorage.setItem(ME_KEY, JSON.stringify(me.value))
   } catch (e2: unknown) { errorText.value = errMsg(e2, '반장 변경 실패') } finally { saving.value = false }
 }
+// ── 추가비용(계단청소 외) ──
+const addExtra = () => extraDraft.value.push({ name: '', amount: 0 })
+const removeExtra = async (i: number) => {
+  extraDraft.value.splice(i, 1)
+  await commitExtra()
+}
+/** 이름이 있는 항목만 서버에 저장 → 서버 재계산 결과로 갱신 */
+const commitExtra = async () => {
+  if (!me.value || !statement.value) return
+  const clean = extraDraft.value
+    .filter((c) => c.name.trim() !== '')
+    .map((c) => ({ name: c.name.trim(), amount: Number(c.amount) || 0 }))
+  saving.value = true
+  try {
+    statement.value = await saveExtraCosts(statement.value.yearMonth, me.value, clean)
+  } catch (e: unknown) { errorText.value = errMsg(e, '추가비용 저장 실패') } finally { saving.value = false }
+}
+
 const resetUnit = ref('')
 const doReset = async () => {
   if (!me.value || !resetUnit.value) return
@@ -284,6 +307,10 @@ function errMsg(e: unknown, fallback: string): string {
               <li><span>수도료</span><b>{{ won(myRow?.water ?? 0) }}</b></li>
               <li><span>수고비</span><b>{{ won(myRow?.labor ?? 0) }}</b></li>
               <li><span>전기·계단청소</span><b>{{ won(myRow?.elecStair ?? 0) }}</b></li>
+              <li v-if="(myRow?.extra ?? 0) > 0">
+                <span>추가비용<em v-if="statement.extraCosts.length" class="wf-extra-names">{{ statement.extraCosts.map((c) => c.name).join(', ') }}</em></span>
+                <b>{{ won(myRow?.extra ?? 0) }}</b>
+              </li>
               <li v-if="(myRow?.discount ?? 0) > 0"><span>감면</span><b>-{{ won(myRow?.discount ?? 0) }}</b></li>
             </ul>
           </section>
@@ -351,13 +378,41 @@ function errMsg(e: unknown, fallback: string): string {
             </div>
           </section>
 
+          <!-- 추가비용(계단청소 외) -->
+          <section class="wf-extra">
+            <div class="wf-extra__head">
+              <h3 class="wf-extra__title">추가비용 <span class="wf-muted">(계단청소 외, 전체 세대 균등)</span></h3>
+              <strong v-if="statement.totalExtra > 0" class="wf-extra__total">합계 {{ won(statement.totalExtra) }}원 · 세대당 {{ won(statement.totals.extra / 15) }}원</strong>
+            </div>
+
+            <template v-if="me.isManager">
+              <ul class="wf-extra__list">
+                <li v-for="(c, i) in extraDraft" :key="i" class="wf-extra__row">
+                  <input v-model="c.name" type="text" class="wf-input wf-extra__name" placeholder="항목명 (예: 소독비)" @change="commitExtra" />
+                  <input v-model.number="c.amount" type="number" class="wf-input wf-extra__amount" placeholder="금액" @change="commitExtra" />
+                  <button type="button" class="wf-btn wf-btn--ghost" :disabled="saving" @click="removeExtra(i)" aria-label="삭제">✕</button>
+                </li>
+              </ul>
+              <button type="button" class="wf-btn" :disabled="saving" @click="addExtra">＋ 추가비용 항목</button>
+            </template>
+
+            <ul v-else-if="statement.extraCosts.length" class="wf-extra__list">
+              <li v-for="(c, i) in statement.extraCosts" :key="i" class="wf-extra__row wf-extra__row--ro">
+                <span>{{ c.name }}</span><b>{{ won(c.amount) }}원</b>
+              </li>
+            </ul>
+            <p v-else class="wf-muted">추가비용 없음</p>
+          </section>
+
           <!-- 표 -->
           <div class="wf-table-wrap">
             <table class="wf-table">
               <thead>
                 <tr>
                   <th>호수</th><th>이전검침</th><th>현재검침</th><th>사용량<br />(t)</th>
-                  <th>수도료</th><th>수고비</th><th>전기/계단</th><th>감면</th><th>납입액</th><th>가구수</th>
+                  <th>수도료</th><th>수고비</th><th>전기/계단</th>
+                  <th v-if="statement.totalExtra > 0">추가</th>
+                  <th>감면</th><th>납입액</th><th>가구수</th>
                 </tr>
               </thead>
               <tbody>
@@ -375,6 +430,7 @@ function errMsg(e: unknown, fallback: string): string {
                   <td class="wf-num">{{ won(row.water) }}</td>
                   <td class="wf-num">{{ won(row.labor) }}</td>
                   <td class="wf-num">{{ won(row.elecStair) }}</td>
+                  <td v-if="statement.totalExtra > 0" class="wf-num">{{ won(row.extra) }}</td>
                   <td v-if="me.isManager"><input v-model.number="row.discount" type="number" class="wf-cell" @change="saveU(row, 'discount')" /></td>
                   <td v-else class="wf-num">{{ won(row.discount) }}</td>
                   <td class="wf-num wf-pay">{{ won(row.payment) }}</td>
@@ -389,6 +445,7 @@ function errMsg(e: unknown, fallback: string): string {
                   <td class="wf-num">{{ won(statement.totals.water) }}</td>
                   <td class="wf-num">{{ won(statement.totals.labor) }}</td>
                   <td class="wf-num">{{ won(statement.totals.elecStair) }}</td>
+                  <td v-if="statement.totalExtra > 0" class="wf-num">{{ won(statement.totals.extra) }}</td>
                   <td class="wf-num">{{ won(statement.totals.discount) }}</td>
                   <td class="wf-num wf-pay">{{ won(statement.totals.payment) }}</td>
                   <td class="wf-num">{{ statement.totals.households }}</td>
@@ -537,6 +594,23 @@ function errMsg(e: unknown, fallback: string): string {
 .wf-input[readonly] { background: var(--surface-soft); color: var(--body-text); }
 .wf-field--calc { justify-content: space-between; padding: 8px 10px; background: var(--canvas); border: 1px solid var(--hairline-soft); border-radius: 8px; }
 .wf-field--calc strong { font-size: 15px; color: var(--ink); }
+
+/* ── 추가비용 ── */
+.wf-extra {
+  padding: var(--space-base); border: 1px solid var(--hairline-soft);
+  border-radius: 14px; background: var(--surface-soft); margin-bottom: var(--space-lg);
+}
+.wf-extra__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-sm); flex-wrap: wrap; margin-bottom: var(--space-sm); }
+.wf-extra__title { margin: 0; font-size: 15px; font-weight: 700; color: var(--ink); }
+.wf-extra__title .wf-muted { font-size: 12px; font-weight: 400; }
+.wf-extra__total { font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.wf-extra__list { list-style: none; margin: 0 0 var(--space-sm); padding: 0; display: grid; gap: 6px; }
+.wf-extra__row { display: flex; gap: var(--space-sm); align-items: center; }
+.wf-extra__name { flex: 1; text-align: left; }
+.wf-extra__amount { width: 120px; }
+.wf-extra__row--ro { justify-content: space-between; font-size: 14px; color: var(--body-text); padding: 6px 2px; border-bottom: 1px solid var(--hairline-soft); }
+.wf-extra__row--ro b { font-variant-numeric: tabular-nums; color: var(--ink); }
+.wf-extra-names { display: block; font-style: normal; font-size: 12px; color: var(--muted); }
 
 .wf-table-wrap { overflow-x: auto; }
 .wf-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 760px; }
