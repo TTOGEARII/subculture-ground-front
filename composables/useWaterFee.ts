@@ -110,9 +110,12 @@ export const useWaterFee = () => {
     return data
   }
 
-  /** 명세서를 엑셀(xlsx)로 내려받아 파일 저장 트리거 */
-  const downloadExcel = async (ym: string): Promise<void> => {
-    const res = await api.get(`${stmts}/${ym}/excel`, { responseType: 'blob' })
+  /** 명세서를 엑셀(xlsx)로 내려받아 파일 저장 트리거. 신원이 반장이면 가구수 열 포함. */
+  const downloadExcel = async (ym: string, me?: Identity): Promise<void> => {
+    const res = await api.get(`${stmts}/${ym}/excel`, {
+      responseType: 'blob',
+      params: me ? { unitNo: me.unitNo, residentId: me.residentId } : undefined,
+    })
     const url = URL.createObjectURL(res.data as Blob)
     const a = document.createElement('a')
     a.href = url
