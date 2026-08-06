@@ -204,7 +204,6 @@ function errMsg(e: unknown, fallback: string): string {
     <main class="wf-main">
       <header class="wf-head">
         <div>
-          <NuxtLink to="/" class="home-link">← 메인</NuxtLink>
           <h1 class="wf-title">중앙그린빌라 수도요금</h1>
         </div>
         <div v-if="me" class="wf-who">
@@ -424,9 +423,7 @@ function errMsg(e: unknown, fallback: string): string {
   display: flex; align-items: flex-end; justify-content: space-between;
   gap: var(--space-base); margin-bottom: var(--space-lg); flex-wrap: wrap;
 }
-.home-link { display: inline-block; font-size: 13px; color: var(--muted); text-decoration: none; }
-.home-link:hover { color: var(--ink); }
-.wf-title { margin: var(--space-xs) 0 0; font-size: 22px; font-weight: 700; color: var(--ink); }
+.wf-title { margin: 0; font-size: 22px; font-weight: 700; color: var(--ink); }
 .wf-who { display: flex; align-items: center; gap: var(--space-sm); }
 .wf-who__name { font-size: 15px; font-weight: 600; color: var(--ink); }
 
