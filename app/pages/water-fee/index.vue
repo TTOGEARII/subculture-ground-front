@@ -177,13 +177,20 @@ const changeManager = async (e: Event) => {
 const resetUnit = ref('')
 const doReset = async () => {
   if (!me.value || !resetUnit.value) return
-  if (!confirm(`${resetUnit.value}호의 아이디 등록을 초기화할까요? 그 세대는 새 아이디로 다시 등록해야 해요.`)) return
+  const target = resetUnit.value
+  if (!confirm(`${target}호의 아이디 등록을 초기화할까요? 그 세대는 새 아이디로 다시 등록해야 해요.`)) return
   saving.value = true
   try {
-    await resetHousehold(resetUnit.value, me.value)
+    await resetHousehold(target, me.value)
     resetUnit.value = ''
     errorText.value = ''
-    alert('초기화했어요.')
+    if (target === me.value.unitNo) {
+      // 내 세대를 초기화하면 내 로그인도 풀고 재등록 화면으로 보낸다
+      alert('초기화했어요. 새 이름으로 다시 등록해 주세요.')
+      logout()
+    } else {
+      alert('초기화했어요.')
+    }
   } catch (e: unknown) { errorText.value = errMsg(e, '초기화 실패') } finally { saving.value = false }
 }
 
