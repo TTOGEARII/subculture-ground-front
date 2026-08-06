@@ -367,22 +367,31 @@ function errMsg(e: unknown, fallback: string): string {
           <section class="wf-summary">
             <h2 class="wf-summary__title">{{ statement.yearMonth }} 요금내역서</h2>
             <div class="wf-summary__grid">
-              <label class="wf-field">
-                <span>총 수도요금 (원)</span>
-                <input v-model.number="statement.totalWaterFee" type="number" class="wf-input" :readonly="!me.isManager" @change="me.isManager && saveG('totalWaterFee')" />
-              </label>
-              <label class="wf-field">
-                <span>공동전기 (원)</span>
-                <input v-model.number="statement.commonElectricity" type="number" class="wf-input" :readonly="!me.isManager" @change="me.isManager && saveG('commonElectricity')" />
-              </label>
-              <label class="wf-field">
-                <span>수도국 총사용량 (톤)</span>
-                <input v-model.number="statement.bureauTotalTons" type="number" class="wf-input" :readonly="!me.isManager" @change="me.isManager && saveG('bureauTotalTons')" />
-              </label>
-              <label class="wf-field">
-                <span>계단청소 (라인당, 원)</span>
-                <input v-model.number="statement.stairCleaningFee" type="number" class="wf-input" :readonly="!me.isManager" @change="me.isManager && saveG('stairCleaningFee')" />
-              </label>
+              <!-- 편집 가능 전역값: 반장만 입력, 그 외에는 값만 표시(수정 불가) -->
+              <template v-if="me.isManager">
+                <label class="wf-field">
+                  <span>총 수도요금 (원)</span>
+                  <input v-model.number="statement.totalWaterFee" type="number" class="wf-input" @change="saveG('totalWaterFee')" />
+                </label>
+                <label class="wf-field">
+                  <span>공동전기 (원)</span>
+                  <input v-model.number="statement.commonElectricity" type="number" class="wf-input" @change="saveG('commonElectricity')" />
+                </label>
+                <label class="wf-field">
+                  <span>수도국 총사용량 (톤)</span>
+                  <input v-model.number="statement.bureauTotalTons" type="number" class="wf-input" @change="saveG('bureauTotalTons')" />
+                </label>
+                <label class="wf-field">
+                  <span>계단청소 (라인당, 원)</span>
+                  <input v-model.number="statement.stairCleaningFee" type="number" class="wf-input" @change="saveG('stairCleaningFee')" />
+                </label>
+              </template>
+              <template v-else>
+                <div class="wf-field wf-field--calc"><span>총 수도요금 (원)</span><strong>{{ won(statement.totalWaterFee) }}</strong></div>
+                <div class="wf-field wf-field--calc"><span>공동전기 (원)</span><strong>{{ won(statement.commonElectricity) }}</strong></div>
+                <div class="wf-field wf-field--calc"><span>수도국 총사용량 (톤)</span><strong>{{ statement.bureauTotalTons }}</strong></div>
+                <div class="wf-field wf-field--calc"><span>계단청소 (라인당, 원)</span><strong>{{ won(statement.stairCleaningFee) }}</strong></div>
+              </template>
               <div class="wf-field wf-field--calc"><span>1톤당 (원)</span><strong>{{ dec1(statement.perTon) }}</strong></div>
               <div class="wf-field wf-field--calc"><span>검침 총사용량 (톤)</span><strong>{{ statement.meteredTons }}</strong></div>
               <div class="wf-field wf-field--calc"><span>수도국과의 차이 (톤)</span><strong>{{ statement.bureauDiff }}</strong></div>
