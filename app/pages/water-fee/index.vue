@@ -10,29 +10,22 @@ import {
   type Me,
 } from '../../../composables/useWaterFee'
 
-definePageMeta({ layout: 'main' })
-useSeoMeta({ title: '중앙그린빌라 수도요금 - Subculture Ground' })
+definePageMeta({ layout: false })
+useSeoMeta({ title: '중앙그린빌라 수도요금' })
+useHead({
+  link: [
+    { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+    { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+    { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=Noto+Sans+KR:wght@400;600;800&display=swap' },
+  ],
+})
 
 const {
   listStatements, getStatement, getUnitHistory, downloadExcel, verifyHousehold, saveMyReading,
   createStatement, saveGlobals, saveUnit, setManager, saveExtraCosts, resetHousehold,
 } = useWaterFee()
 
-const downloading = ref(false)
-const doDownload = async () => {
-  if (!statement.value) return
-  downloading.value = true
-  errorText.value = ''
-  try {
-    await downloadExcel(statement.value.yearMonth, me.value ?? undefined)
-  } catch {
-    errorText.value = '엑셀 다운로드에 실패했어요.'
-  } finally {
-    downloading.value = false
-  }
-}
-
-/** 15세대 (식별 화면 선택용) */
+/** 15세대 */
 const UNIT_NUMBERS = [
   '101', '102', '103',
   '201', '202', '203', '204',
@@ -41,9 +34,10 @@ const UNIT_NUMBERS = [
 ]
 
 const ME_KEY = 'water-fee:me'
+type Tab = 'mine' | 'hist' | 'all' | 'manage'
 
 const me = ref<Me | null>(null)
-const view = ref<'mine' | 'all'>('mine')
+const tab = ref<Tab>('mine')
 
 const months = ref<StatementSummary[]>([])
 const selectedMonth = ref('')
@@ -59,18 +53,42 @@ const fId = ref('')
 const identifying = ref(false)
 const idError = ref('')
 
-// 내 검침 입력
+// 내 검침 입력 / 관리 인라인 편집 / 추가비용 초안
 const readingInput = ref<number | null>(null)
-
-// 추가비용 편집 초안(반장) — 서버 저장본을 화면에서 편집
+const editingUnit = ref('')
 const extraDraft = ref<ExtraCost[]>([])
+const resetUnit = ref('')
+const downloading = ref(false)
 
 const won = (n: number) => Math.round(n).toLocaleString('ko-KR')
 const dec1 = (n: number) => (Math.round(n * 10) / 10).toLocaleString('ko-KR', { minimumFractionDigits: 1 })
+const monthNum = (ym: string) => Number(ym.split('-')[1] ?? 0)
+
+const tabTitle = computed(() => ({ mine: '우리 집', hist: '사용 내역', all: '전체 세대', manage: '관리' }[tab.value]))
 
 const myRow = computed<UnitRow | null>(() =>
   me.value && statement.value ? statement.value.rows.find((r) => r.unitNo === me.value!.unitNo) ?? null : null,
 )
+
+/** 선택월 직전 달 내 사용량 */
+const prevUsage = computed(() => {
+  const i = myHistory.value.findIndex((h) => h.yearMonth === selectedMonth.value)
+  if (i >= 0 && myHistory.value[i + 1]) return myHistory.value[i + 1].usage
+  return myHistory.value[1]?.usage ?? 0
+})
+
+/** 최근 6개월 막대차트 (오래된→최신) */
+const chart = computed(() => {
+  const rows = myHistory.value.slice(0, 6).reverse()
+  const max = Math.max(1, ...rows.map((r) => r.usage))
+  return rows.map((r, i) => ({
+    ym: r.yearMonth,
+    label: `${monthNum(r.yearMonth)}월`,
+    usage: r.usage,
+    hPct: Math.max(3, Math.round((r.usage / max) * 100)),
+    latest: i === rows.length - 1,
+  }))
+})
 
 onMounted(async () => {
   try {
@@ -93,6 +111,7 @@ const load = async (ym: string) => {
   selectedMonth.value = ym
   readingInput.value = myRow.value ? myRow.value.currReading : null
   extraDraft.value = (statement.value.extraCosts ?? []).map((c) => ({ ...c }))
+  editingUnit.value = ''
 }
 watch(selectedMonth, (ym) => {
   if (ym && ym !== statement.value?.yearMonth) load(ym).catch(() => (errorText.value = '불러오기 실패'))
@@ -112,7 +131,7 @@ const submitIdentify = async () => {
   try {
     me.value = await verifyHousehold(fUnit.value, fId.value.trim())
     localStorage.setItem(ME_KEY, JSON.stringify(me.value))
-    view.value = 'mine'
+    tab.value = 'mine'
     readingInput.value = myRow.value ? myRow.value.currReading : null
     await loadHistory()
   } catch (e: unknown) {
@@ -125,7 +144,7 @@ const submitIdentify = async () => {
 const logout = () => {
   me.value = null
   myHistory.value = []
-  view.value = 'mine'
+  tab.value = 'mine'
   fUnit.value = ''
   fId.value = ''
   localStorage.removeItem(ME_KEY)
@@ -188,18 +207,17 @@ const changeManager = async (e: Event) => {
   try {
     const updated = await setManager(statement.value.yearMonth, me.value, managerUnit)
     statement.value = updated
-    // 반장이 나에서 다른 세대로 바뀌면 내 관리 권한 갱신
     me.value = { ...me.value, isManager: updated.managerUnit === me.value.unitNo }
     localStorage.setItem(ME_KEY, JSON.stringify(me.value))
   } catch (e2: unknown) { errorText.value = errMsg(e2, '반장 변경 실패') } finally { saving.value = false }
 }
-// ── 추가비용(계단청소 외) ──
+
+// ── 추가비용 ──
 const addExtra = () => extraDraft.value.push({ name: '', amount: 0 })
 const removeExtra = async (i: number) => {
   extraDraft.value.splice(i, 1)
   await commitExtra()
 }
-/** 이름이 있는 항목만 서버에 저장 → 서버 재계산 결과로 갱신 */
 const commitExtra = async () => {
   if (!me.value || !statement.value) return
   const clean = extraDraft.value
@@ -211,7 +229,6 @@ const commitExtra = async () => {
   } catch (e: unknown) { errorText.value = errMsg(e, '추가비용 저장 실패') } finally { saving.value = false }
 }
 
-const resetUnit = ref('')
 const doReset = async () => {
   if (!me.value || !resetUnit.value) return
   const target = resetUnit.value
@@ -221,14 +238,22 @@ const doReset = async () => {
     await resetHousehold(target, me.value)
     resetUnit.value = ''
     errorText.value = ''
-    if (target === me.value.unitNo) {
-      // 내 세대를 초기화하면 내 로그인도 풀고 재등록 화면으로 보낸다
-      alert('초기화했어요. 새 이름으로 다시 등록해 주세요.')
-      logout()
-    } else {
-      alert('초기화했어요.')
-    }
+    if (target === me.value.unitNo) { alert('초기화했어요. 새 이름으로 다시 등록해 주세요.'); logout() }
+    else alert('초기화했어요.')
   } catch (e: unknown) { errorText.value = errMsg(e, '초기화 실패') } finally { saving.value = false }
+}
+
+const doDownload = async () => {
+  if (!statement.value) return
+  downloading.value = true
+  errorText.value = ''
+  try {
+    await downloadExcel(statement.value.yearMonth, me.value ?? undefined)
+  } catch {
+    errorText.value = '엑셀 다운로드에 실패했어요.'
+  } finally {
+    downloading.value = false
+  }
 }
 
 function errMsg(e: unknown, fallback: string): string {
@@ -237,433 +262,459 @@ function errMsg(e: unknown, fallback: string): string {
 </script>
 
 <template>
-  <div class="page">
-    <main class="wf-main">
+  <div class="wf-shell">
+    <div class="wf-app">
+      <!-- 헤더 -->
       <header class="wf-head">
-        <div>
-          <h1 class="wf-title">중앙그린빌라 수도요금</h1>
+        <div class="wf-head__l">
+          <span class="wf-head__title">{{ me ? tabTitle : '수도요금' }}</span>
+          <span class="wf-kicker">Water fee</span>
         </div>
-        <div v-if="me" class="wf-who">
-          <span class="wf-who__name">{{ me.unitNo }}호 {{ me.residentId }}님</span>
-          <button type="button" class="wf-btn wf-btn--ghost" @click="logout">다른 집</button>
+        <div class="wf-head__r">
+          <select v-if="me && months.length" v-model="selectedMonth" class="wf-monthsel" aria-label="정산 월">
+            <option v-for="m in months" :key="m.yearMonth" :value="m.yearMonth">{{ m.yearMonth }}</option>
+          </select>
+          <button v-if="me" type="button" class="wf-linkbtn" @click="logout">다른 집</button>
         </div>
       </header>
 
-      <p v-if="errorText" class="wf-error" role="alert">{{ errorText }}</p>
-      <section v-if="loading" class="wf-empty">불러오는 중…</section>
+      <main class="wf-body">
+        <p v-if="errorText" class="wf-err" role="alert">{{ errorText }}</p>
+        <section v-if="loading" class="wf-note">불러오는 중…</section>
 
-      <!-- ── 모드 0: 세대 식별 ── -->
-      <section v-else-if="!me" class="wf-identify">
-        <h2 class="wf-identify__title">우리 집 수도요금 보기</h2>
-        <p class="wf-identify__sub">우리 집 <b>호수</b>와 <b>이름</b>을 넣어 주세요. 비밀번호는 없어요.</p>
-        <form class="wf-identify__form" @submit.prevent="submitIdentify">
-          <label class="wf-bigfield">
-            <span>우리 집 호수</span>
-            <select v-model="fUnit" class="wf-biginput">
-              <option value="" disabled>호수를 골라주세요</option>
-              <option v-for="u in UNIT_NUMBERS" :key="u" :value="u">{{ u }}호</option>
-            </select>
-          </label>
-          <label class="wf-bigfield">
-            <span>이름 (또는 아이디)</span>
-            <input v-model="fId" type="text" class="wf-biginput" placeholder="예: 홍길동" autocomplete="off" />
-          </label>
-          <p v-if="idError" class="wf-error" role="alert">{{ idError }}</p>
-          <button type="submit" class="wf-bigbtn" :disabled="identifying">
-            {{ identifying ? '확인 중…' : '확인' }}
-          </button>
-          <p class="wf-identify__hint">처음이면 이 이름으로 등록돼요. 다음부터는 같은 이름으로 들어와요.</p>
-        </form>
-      </section>
-
-      <!-- ── 모드 1: 내 세대 ── -->
-      <template v-else-if="view === 'mine'">
-        <section v-if="!statement" class="wf-empty">
-          <p>아직 이번 달 정산표가 없어요.</p>
-          <button v-if="me.isManager" type="button" class="wf-btn wf-btn--primary" @click="createNext">첫 명세서 만들기</button>
-          <p v-else class="wf-muted">반장이 정산표를 만들면 여기에 보여요.</p>
-        </section>
-
-        <template v-else>
-          <div class="wf-monthbar">
-            <select v-if="months.length > 1" v-model="selectedMonth" class="wf-select" aria-label="정산 월">
-              <option v-for="m in months" :key="m.yearMonth" :value="m.yearMonth">{{ m.yearMonth }}</option>
-            </select>
-            <span v-else class="wf-monthbar__label">{{ statement.yearMonth }}</span>
+        <!-- ── 식별 ── -->
+        <section v-else-if="!me" class="wf-identify">
+          <div class="wf-identify__hero">
+            <span class="wf-kicker">중앙그린빌라</span>
+            <h2 class="wf-identify__title">우리 집<br />수도요금 보기</h2>
+            <p class="wf-identify__sub">호수와 이름을 넣어 주세요. 비밀번호는 없어요.</p>
           </div>
-
-          <section class="wf-mecard">
-            <h2 class="wf-mecard__unit">
-              우리 집 <strong>{{ me.unitNo }}호</strong>
-              <span v-if="myRow?.isManager" class="wf-tag">반장</span>
-            </h2>
-
-            <div class="wf-reading">
-              <label for="wf-reading-input" class="wf-reading__label">이번 달 계량기 숫자</label>
-              <input
-                id="wf-reading-input"
-                v-model.number="readingInput"
-                type="number"
-                inputmode="numeric"
-                class="wf-reading__input"
-              />
-              <button type="button" class="wf-bigbtn wf-bigbtn--save" :disabled="saving" @click="submitReading">
-                {{ saving ? '저장 중…' : '저장' }}
-              </button>
-            </div>
-            <p class="wf-reading__prev">지난달 검침: <b>{{ myRow?.prevReading }}</b></p>
-
-            <dl class="wf-mestats">
-              <div><dt>사용량</dt><dd>{{ myRow?.usage }} 톤</dd></div>
-              <div class="wf-mestats--pay"><dt>이번 달 내는 돈</dt><dd>{{ won(myRow?.payment ?? 0) }} 원</dd></div>
-            </dl>
-            <ul class="wf-medetail">
-              <li><span>수도료</span><b>{{ won(myRow?.water ?? 0) }}</b></li>
-              <li><span>수고비</span><b>{{ won(myRow?.labor ?? 0) }}</b></li>
-              <li><span>전기·계단청소</span><b>{{ won(myRow?.elecStair ?? 0) }}</b></li>
-              <li v-if="(myRow?.extra ?? 0) > 0">
-                <span>추가비용<em v-if="statement.extraCosts.length" class="wf-extra-names">{{ statement.extraCosts.map((c) => c.name).join(', ') }}</em></span>
-                <b>{{ won(myRow?.extra ?? 0) }}</b>
-              </li>
-              <li v-if="(myRow?.discount ?? 0) > 0"><span>감면</span><b>-{{ won(myRow?.discount ?? 0) }}</b></li>
-            </ul>
-          </section>
-
-          <section v-if="myHistory.length > 1" class="wf-hist">
-            <h3 class="wf-hist__title">지난 사용 내역</h3>
-            <ul class="wf-hist__list">
-              <li v-for="h in myHistory" :key="h.yearMonth">
-                <span class="wf-hist__ym">{{ h.yearMonth }}</span>
-                <span class="wf-hist__use">{{ h.usage }}톤</span>
-                <span class="wf-hist__pay">{{ won(h.payment) }}원</span>
-              </li>
-            </ul>
-          </section>
-
-          <button type="button" class="wf-bigbtn wf-bigbtn--outline" @click="view = 'all'">전체 세대 보기</button>
-        </template>
-      </template>
-
-      <!-- ── 모드 2: 전체 보기 ── -->
-      <template v-else>
-        <div class="wf-allbar">
-          <button type="button" class="wf-btn" @click="view = 'mine'">← 내 집</button>
-          <div class="wf-allbar__right">
-            <select v-if="months.length > 1" v-model="selectedMonth" class="wf-select" aria-label="정산 월">
-              <option v-for="m in months" :key="m.yearMonth" :value="m.yearMonth">{{ m.yearMonth }}</option>
-            </select>
-            <span v-if="saving" class="wf-saving">저장 중…</span>
-            <button v-if="statement" type="button" class="wf-btn" :disabled="downloading" @click="doDownload">
-              {{ downloading ? '엑셀 만드는 중…' : '⬇ 엑셀 다운로드' }}
-            </button>
-            <button v-if="me.isManager" type="button" class="wf-btn" :disabled="saving" @click="createNext">＋ 새 달</button>
-          </div>
-        </div>
-
-        <section v-if="!statement" class="wf-empty">아직 정산표가 없어요.</section>
-
-        <template v-else>
-          <!-- 요약 -->
-          <section class="wf-summary">
-            <h2 class="wf-summary__title">{{ statement.yearMonth }} 요금내역서</h2>
-            <div class="wf-summary__grid">
-              <!-- 편집 가능 전역값: 반장만 입력, 그 외에는 값만 표시(수정 불가) -->
-              <template v-if="me.isManager">
-                <label class="wf-field">
-                  <span>총 수도요금 (원)</span>
-                  <input v-model.number="statement.totalWaterFee" type="number" class="wf-input" @change="saveG('totalWaterFee')" />
-                </label>
-                <label class="wf-field">
-                  <span>공동전기 (원)</span>
-                  <input v-model.number="statement.commonElectricity" type="number" class="wf-input" @change="saveG('commonElectricity')" />
-                </label>
-                <label class="wf-field">
-                  <span>수도국 총사용량 (톤)</span>
-                  <input v-model.number="statement.bureauTotalTons" type="number" class="wf-input" @change="saveG('bureauTotalTons')" />
-                </label>
-                <label class="wf-field">
-                  <span>계단청소 (라인당, 원)</span>
-                  <input v-model.number="statement.stairCleaningFee" type="number" class="wf-input" @change="saveG('stairCleaningFee')" />
-                </label>
-              </template>
-              <template v-else>
-                <div class="wf-field wf-field--calc"><span>총 수도요금 (원)</span><strong>{{ won(statement.totalWaterFee) }}</strong></div>
-                <div class="wf-field wf-field--calc"><span>공동전기 (원)</span><strong>{{ won(statement.commonElectricity) }}</strong></div>
-                <div class="wf-field wf-field--calc"><span>수도국 총사용량 (톤)</span><strong>{{ statement.bureauTotalTons }}</strong></div>
-                <div class="wf-field wf-field--calc"><span>계단청소 (라인당, 원)</span><strong>{{ won(statement.stairCleaningFee) }}</strong></div>
-              </template>
-              <div class="wf-field wf-field--calc"><span>1톤당 (원)</span><strong>{{ dec1(statement.perTon) }}</strong></div>
-              <div class="wf-field wf-field--calc"><span>검침 총사용량 (톤)</span><strong>{{ statement.meteredTons }}</strong></div>
-              <div class="wf-field wf-field--calc"><span>수도국과의 차이 (톤)</span><strong>{{ statement.bureauDiff }}</strong></div>
-              <label v-if="me.isManager" class="wf-field">
-                <span>반장 호수</span>
-                <select class="wf-input" :value="statement.managerUnit" @change="changeManager">
-                  <option v-for="u in UNIT_NUMBERS" :key="u" :value="u">{{ u }}호</option>
-                </select>
-              </label>
-            </div>
-          </section>
-
-          <!-- 추가비용(계단청소 외) -->
-          <section class="wf-extra">
-            <div class="wf-extra__head">
-              <h3 class="wf-extra__title">추가비용 <span class="wf-muted">(계단청소 외, 전체 세대 균등)</span></h3>
-              <strong v-if="statement.totalExtra > 0" class="wf-extra__total">합계 {{ won(statement.totalExtra) }}원 · 세대당 {{ won(statement.totals.extra / 15) }}원</strong>
-            </div>
-
-            <template v-if="me.isManager">
-              <ul class="wf-extra__list">
-                <li v-for="(c, i) in extraDraft" :key="i" class="wf-extra__row">
-                  <input v-model="c.name" type="text" class="wf-input wf-extra__name" placeholder="항목명 (예: 소독비)" @change="commitExtra" />
-                  <input v-model.number="c.amount" type="number" class="wf-input wf-extra__amount" placeholder="금액" @change="commitExtra" />
-                  <button type="button" class="wf-btn wf-btn--ghost" :disabled="saving" @click="removeExtra(i)" aria-label="삭제">✕</button>
-                </li>
-              </ul>
-              <button type="button" class="wf-btn" :disabled="saving" @click="addExtra">＋ 추가비용 항목</button>
-            </template>
-
-            <ul v-else-if="statement.extraCosts.length" class="wf-extra__list">
-              <li v-for="(c, i) in statement.extraCosts" :key="i" class="wf-extra__row wf-extra__row--ro">
-                <span>{{ c.name }}</span><b>{{ won(c.amount) }}원</b>
-              </li>
-            </ul>
-            <p v-else class="wf-muted">추가비용 없음</p>
-          </section>
-
-          <!-- 표 -->
-          <div class="wf-table-wrap">
-            <table class="wf-table">
-              <thead>
-                <tr>
-                  <th>호수</th><th>이전검침</th><th>현재검침</th><th>사용량<br />(t)</th>
-                  <th>수도료</th><th>수고비</th><th>전기/계단</th>
-                  <th v-if="statement.totalExtra > 0">추가</th>
-                  <th>감면</th><th>납입액</th>
-                  <th v-if="me.isManager">가구수</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in statement.rows" :key="row.unitNo" :class="{ 'is-manager': row.isManager, 'is-me': row.unitNo === me.unitNo }">
-                  <th scope="row">{{ row.unitNo }}<span v-if="row.isManager" class="wf-tag">반장</span></th>
-                  <template v-if="me.isManager">
-                    <td><input v-model.number="row.prevReading" type="number" class="wf-cell" @change="saveU(row, 'prevReading')" /></td>
-                    <td><input v-model.number="row.currReading" type="number" class="wf-cell" @change="saveU(row, 'currReading')" /></td>
-                  </template>
-                  <template v-else>
-                    <td class="wf-num">{{ row.prevReading }}</td>
-                    <td class="wf-num">{{ row.currReading }}</td>
-                  </template>
-                  <td class="wf-num">{{ row.usage }}</td>
-                  <td class="wf-num">{{ won(row.water) }}</td>
-                  <td class="wf-num">{{ won(row.labor) }}</td>
-                  <td class="wf-num">{{ won(row.elecStair) }}</td>
-                  <td v-if="statement.totalExtra > 0" class="wf-num">{{ won(row.extra) }}</td>
-                  <td v-if="me.isManager"><input v-model.number="row.discount" type="number" class="wf-cell" @change="saveU(row, 'discount')" /></td>
-                  <td v-else class="wf-num">{{ won(row.discount) }}</td>
-                  <td class="wf-num wf-pay">{{ won(row.payment) }}</td>
-                  <td v-if="me.isManager"><input v-model.number="row.households" type="number" class="wf-cell wf-cell--sm" @change="saveU(row, 'households')" /></td>
-                </tr>
-              </tbody>
-              <tfoot>
-                <tr>
-                  <th scope="row">합계</th><td /><td />
-                  <td class="wf-num">{{ statement.totals.usage }}</td>
-                  <td class="wf-num">{{ won(statement.totals.water) }}</td>
-                  <td class="wf-num">{{ won(statement.totals.labor) }}</td>
-                  <td class="wf-num">{{ won(statement.totals.elecStair) }}</td>
-                  <td v-if="statement.totalExtra > 0" class="wf-num">{{ won(statement.totals.extra) }}</td>
-                  <td class="wf-num">{{ won(statement.totals.discount) }}</td>
-                  <td class="wf-num wf-pay">{{ won(statement.totals.payment) }}</td>
-                  <td v-if="me.isManager" class="wf-num">{{ statement.totals.households }}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-          <p v-if="me.isManager" class="wf-hint">검침값·감면·가구수를 고치면 자동 저장되고 나머지는 자동 계산돼요.</p>
-
-          <!-- 관리자 도구: 아이디 초기화 -->
-          <section v-if="me.isManager" class="wf-mgrtools">
-            <h3 class="wf-mgrtools__title">세대 아이디 초기화</h3>
-            <p class="wf-muted">아이디를 잊은 세대를 초기화하면, 그 세대가 새 이름으로 다시 등록할 수 있어요.</p>
-            <div class="wf-mgrtools__row">
-              <select v-model="resetUnit" class="wf-select">
-                <option value="" disabled>호수 선택</option>
+          <form class="wf-identify__form" @submit.prevent="submitIdentify">
+            <label class="wf-field">
+              <span class="wf-field__label">우리 집 호수</span>
+              <select v-model="fUnit" class="wf-input wf-input--lg">
+                <option value="" disabled>호수를 골라주세요</option>
                 <option v-for="u in UNIT_NUMBERS" :key="u" :value="u">{{ u }}호</option>
               </select>
-              <button type="button" class="wf-btn" :disabled="!resetUnit || saving" @click="doReset">아이디 초기화</button>
-            </div>
-          </section>
+            </label>
+            <label class="wf-field">
+              <span class="wf-field__label">이름 (또는 아이디)</span>
+              <input v-model="fId" type="text" class="wf-input wf-input--lg" placeholder="예: 홍길동" autocomplete="off" />
+            </label>
+            <p v-if="idError" class="wf-err" role="alert">{{ idError }}</p>
+            <button type="submit" class="btn btn-primary wf-btn-lg" :disabled="identifying">
+              {{ identifying ? '확인 중…' : '확인' }}
+            </button>
+            <p class="wf-identify__hint">처음이면 이 이름으로 등록돼요. 다음부터 같은 이름으로 들어와요.</p>
+          </form>
+        </section>
+
+        <!-- ── 로그인 후 ── -->
+        <template v-else>
+          <!-- 우리 집 -->
+          <template v-if="tab === 'mine'">
+            <section v-if="!statement" class="wf-empty">
+              <p class="wf-empty__t">아직 이번 달 정산표가 없어요.</p>
+              <p class="wf-muted">{{ me.isManager ? '‘관리’ 탭에서 새 달을 만들어 주세요.' : '반장이 정산표를 만들면 여기에 보여요.' }}</p>
+            </section>
+            <template v-else>
+              <div class="wf-hero">
+                <span class="wf-kicker">이번 달 낼 금액</span>
+                <div class="wf-hero__amt"><b>{{ won(myRow?.payment ?? 0) }}</b><span>원</span></div>
+                <div class="wf-tagrow">
+                  <span class="tag tag-accent">사용 {{ myRow?.usage ?? 0 }}톤</span>
+                  <span v-if="myRow?.isManager" class="tag tag-outline">반장</span>
+                </div>
+              </div>
+
+              <div class="wf-grid2">
+                <div class="wf-cell">
+                  <span class="wf-kicker">이번 달 사용량</span>
+                  <div class="wf-cell__v">{{ myRow?.usage ?? 0 }}<em>톤</em></div>
+                  <div class="wf-cell__sub">지난달 {{ prevUsage }}톤</div>
+                </div>
+                <div class="wf-cell wf-cell--r">
+                  <span class="wf-kicker">현재 검침</span>
+                  <div class="wf-cell__v">{{ myRow?.currReading ?? 0 }}</div>
+                  <div class="wf-cell__sub">지난 검침 {{ myRow?.prevReading ?? 0 }}</div>
+                </div>
+              </div>
+
+              <div class="wf-sec">
+                <span class="wf-kicker">이번 달 계량기 숫자</span>
+                <div class="wf-readrow">
+                  <input v-model.number="readingInput" type="number" inputmode="numeric" class="wf-readinput" />
+                  <button type="button" class="btn btn-primary wf-savebtn" :disabled="saving" @click="submitReading">
+                    {{ saving ? '저장 중' : '저장' }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="wf-sec">
+                <div class="wf-sechead"><span>요금 내역</span></div>
+                <div class="wf-line"><span class="wf-line__l">수도료</span><span class="wf-line__v">{{ won(myRow?.water ?? 0) }}원</span></div>
+                <div class="wf-line"><span class="wf-line__l">수고비</span><span class="wf-line__v">{{ won(myRow?.labor ?? 0) }}원</span></div>
+                <div class="wf-line"><span class="wf-line__l">전기·계단청소</span><span class="wf-line__v">{{ won(myRow?.elecStair ?? 0) }}원</span></div>
+                <div v-if="(myRow?.extra ?? 0) > 0" class="wf-line">
+                  <span class="wf-line__l">추가비용<em v-if="statement.extraCosts.length">{{ statement.extraCosts.map((c) => c.name).join(', ') }}</em></span>
+                  <span class="wf-line__v">{{ won(myRow?.extra ?? 0) }}원</span>
+                </div>
+                <div v-if="(myRow?.discount ?? 0) > 0" class="wf-line"><span class="wf-line__l">감면</span><span class="wf-line__v">−{{ won(myRow?.discount ?? 0) }}원</span></div>
+                <div class="wf-line wf-line--total"><span class="wf-line__l">납입액</span><span class="wf-line__total">{{ won(myRow?.payment ?? 0) }}원</span></div>
+              </div>
+
+              <div v-if="myHistory.length > 1" class="wf-sec">
+                <div class="wf-sechead"><span>최근 내역</span><button type="button" class="wf-linkbtn" @click="tab = 'hist'">전체보기</button></div>
+                <div v-for="h in myHistory.slice(0, 3)" :key="h.yearMonth" class="wf-line">
+                  <span class="wf-line__l">{{ monthNum(h.yearMonth) }}월 수도요금<em>{{ h.usage }}톤</em></span>
+                  <span class="wf-line__v">{{ won(h.payment) }}원</span>
+                </div>
+              </div>
+            </template>
+          </template>
+
+          <!-- 내역 -->
+          <template v-else-if="tab === 'hist'">
+            <section v-if="!myHistory.length" class="wf-empty"><p class="wf-muted">아직 사용 내역이 없어요.</p></section>
+            <template v-else>
+              <div class="wf-sec">
+                <div class="wf-sechead"><span>월별 사용량</span><span class="wf-kicker">최근 {{ chart.length }}개월 · 톤</span></div>
+                <div class="wf-chart">
+                  <div v-for="c in chart" :key="c.ym" class="wf-chart__col">
+                    <div class="wf-chart__val" :class="{ 'is-latest': c.latest }">{{ c.usage }}</div>
+                    <div class="wf-chart__bar" :class="{ 'is-latest': c.latest }" :style="{ height: c.hPct + '%' }" />
+                  </div>
+                </div>
+                <div class="wf-chart__labels">
+                  <div v-for="c in chart" :key="c.ym" class="wf-chart__lb" :class="{ 'is-latest': c.latest }">{{ c.label }}</div>
+                </div>
+              </div>
+              <div class="wf-sec">
+                <div v-for="h in myHistory" :key="h.yearMonth" class="wf-line">
+                  <span class="wf-line__l">{{ h.yearMonth }}<em>{{ h.usage }}톤</em></span>
+                  <span class="wf-line__v">{{ won(h.payment) }}원</span>
+                </div>
+              </div>
+            </template>
+          </template>
+
+          <!-- 전체 세대 -->
+          <template v-else-if="tab === 'all'">
+            <section v-if="!statement" class="wf-empty"><p class="wf-muted">아직 정산표가 없어요.</p></section>
+            <template v-else>
+              <div class="wf-stats">
+                <div class="wf-stat"><span class="wf-kicker">전체 세대</span><div class="wf-stat__v">{{ statement.rows.length }}</div></div>
+                <div class="wf-stat"><span class="wf-kicker">검침 총사용량</span><div class="wf-stat__v">{{ statement.meteredTons }}<em>톤</em></div></div>
+                <div class="wf-stat"><span class="wf-kicker">합계 납입</span><div class="wf-stat__v wf-stat__v--sm">{{ won(statement.totals.payment) }}</div></div>
+              </div>
+
+              <div class="wf-toolbar">
+                <button type="button" class="btn btn-secondary" :disabled="downloading" @click="doDownload">
+                  {{ downloading ? '엑셀 만드는 중…' : '⬇ 엑셀 다운로드' }}
+                </button>
+                <span v-if="saving" class="wf-saving">저장 중…</span>
+              </div>
+
+              <div class="wf-units">
+                <div class="wf-units__head">
+                  <span>세대</span><span class="wf-units__ru">사용량</span><span class="wf-units__rf">납입액</span>
+                </div>
+                <template v-for="row in statement.rows" :key="row.unitNo">
+                  <component
+                    :is="me.isManager ? 'button' : 'div'"
+                    class="wf-unit"
+                    :class="{ 'is-mine': row.unitNo === me.unitNo, 'is-open': editingUnit === row.unitNo, 'is-btn': me.isManager }"
+                    @click="me.isManager && (editingUnit = editingUnit === row.unitNo ? '' : row.unitNo)"
+                  >
+                    <span class="wf-unit__name">
+                      {{ row.unitNo }}호
+                      <span v-if="row.unitNo === me.unitNo" class="tag tag-accent">우리집</span>
+                      <span v-if="row.isManager" class="tag tag-outline">반장</span>
+                    </span>
+                    <span class="wf-unit__u">{{ row.usage }}톤</span>
+                    <span class="wf-unit__f">{{ won(row.payment) }}원</span>
+                  </component>
+                  <div v-if="me.isManager && editingUnit === row.unitNo" :key="row.unitNo + '-e'" class="wf-edit">
+                    <label class="wf-field"><span class="wf-field__label">이전 검침</span>
+                      <input v-model.number="row.prevReading" type="number" class="wf-input" @change="saveU(row, 'prevReading')" /></label>
+                    <label class="wf-field"><span class="wf-field__label">현재 검침</span>
+                      <input v-model.number="row.currReading" type="number" class="wf-input" @change="saveU(row, 'currReading')" /></label>
+                    <label class="wf-field"><span class="wf-field__label">감면 (원)</span>
+                      <input v-model.number="row.discount" type="number" class="wf-input" @change="saveU(row, 'discount')" /></label>
+                    <label class="wf-field"><span class="wf-field__label">가구수</span>
+                      <input v-model.number="row.households" type="number" class="wf-input" @change="saveU(row, 'households')" /></label>
+                  </div>
+                </template>
+              </div>
+              <p v-if="me.isManager" class="wf-hint">세대를 눌러 검침·감면·가구수를 고칠 수 있어요.</p>
+            </template>
+          </template>
+
+          <!-- 관리 (반장) -->
+          <template v-else>
+            <section v-if="!statement" class="wf-empty">
+              <p class="wf-empty__t">아직 정산표가 없어요.</p>
+              <button type="button" class="btn btn-primary wf-btn-lg" :disabled="saving" @click="createNext">첫 정산표 만들기</button>
+            </section>
+            <template v-else>
+              <div class="wf-sec">
+                <div class="wf-sechead"><span>요금 입력</span><span class="wf-kicker">1톤당 {{ dec1(statement.perTon) }}원</span></div>
+                <label class="wf-field wf-field--row"><span class="wf-field__label">총 수도요금 (원)</span>
+                  <input v-model.number="statement.totalWaterFee" type="number" class="wf-input wf-input--r" @change="saveG('totalWaterFee')" /></label>
+                <label class="wf-field wf-field--row"><span class="wf-field__label">공동전기 (원)</span>
+                  <input v-model.number="statement.commonElectricity" type="number" class="wf-input wf-input--r" @change="saveG('commonElectricity')" /></label>
+                <label class="wf-field wf-field--row"><span class="wf-field__label">수도국 총사용량 (톤)</span>
+                  <input v-model.number="statement.bureauTotalTons" type="number" class="wf-input wf-input--r" @change="saveG('bureauTotalTons')" /></label>
+                <label class="wf-field wf-field--row"><span class="wf-field__label">계단청소 (라인당, 원)</span>
+                  <input v-model.number="statement.stairCleaningFee" type="number" class="wf-input wf-input--r" @change="saveG('stairCleaningFee')" /></label>
+                <div class="wf-line"><span class="wf-line__l">검침 총사용량 / 수도국 차이</span><span class="wf-line__v">{{ statement.meteredTons }} / {{ statement.bureauDiff }}톤</span></div>
+              </div>
+
+              <div class="wf-sec">
+                <div class="wf-sechead"><span>추가비용</span><span v-if="statement.totalExtra > 0" class="wf-kicker">세대당 {{ won(statement.totals.extra / 15) }}원</span></div>
+                <div v-for="(c, i) in extraDraft" :key="i" class="wf-extrarow">
+                  <input v-model="c.name" type="text" class="wf-input" placeholder="항목명 (예: 소독비)" @change="commitExtra" />
+                  <input v-model.number="c.amount" type="number" class="wf-input wf-input--amt" placeholder="금액" @change="commitExtra" />
+                  <button type="button" class="wf-x" :disabled="saving" aria-label="삭제" @click="removeExtra(i)">✕</button>
+                </div>
+                <button type="button" class="btn btn-secondary wf-add" :disabled="saving" @click="addExtra">＋ 추가비용 항목</button>
+              </div>
+
+              <div class="wf-sec">
+                <div class="wf-sechead"><span>정산 설정</span></div>
+                <label class="wf-field wf-field--row"><span class="wf-field__label">반장 호수</span>
+                  <select class="wf-input wf-input--r" :value="statement.managerUnit" @change="changeManager">
+                    <option v-for="u in UNIT_NUMBERS" :key="u" :value="u">{{ u }}호</option>
+                  </select></label>
+                <div class="wf-field wf-field--row"><span class="wf-field__label">세대 아이디 초기화</span>
+                  <div class="wf-resetrow">
+                    <select v-model="resetUnit" class="wf-input">
+                      <option value="" disabled>호수</option>
+                      <option v-for="u in UNIT_NUMBERS" :key="u" :value="u">{{ u }}호</option>
+                    </select>
+                    <button type="button" class="btn btn-secondary" :disabled="!resetUnit || saving" @click="doReset">초기화</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="wf-sec wf-sec--actions">
+                <button type="button" class="btn btn-secondary wf-btn-lg" :disabled="saving" @click="createNext">＋ 새 달 만들기</button>
+                <button type="button" class="btn btn-secondary wf-btn-lg" :disabled="downloading" @click="doDownload">
+                  {{ downloading ? '엑셀 만드는 중…' : '⬇ 엑셀 다운로드' }}
+                </button>
+              </div>
+            </template>
+          </template>
         </template>
-      </template>
-    </main>
+      </main>
+
+      <!-- 하단 탭 -->
+      <nav v-if="me" class="wf-tabs">
+        <button type="button" class="wf-tab" :class="{ 'is-on': tab === 'mine' }" @click="tab = 'mine'">우리집</button>
+        <button type="button" class="wf-tab" :class="{ 'is-on': tab === 'hist' }" @click="tab = 'hist'">내역</button>
+        <button type="button" class="wf-tab" :class="{ 'is-on': tab === 'all' }" @click="tab = 'all'">전체</button>
+        <button v-if="me.isManager" type="button" class="wf-tab" :class="{ 'is-on': tab === 'manage' }" @click="tab = 'manage'">관리</button>
+      </nav>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.wf-main { max-width: 1000px; margin: 0 auto; padding: var(--space-lg); }
+/* ── Modernist 디자인 토큰 (Claude Design: modernist) ── */
+.wf-app {
+  --bg: #f3f2f2;
+  --surface: #eae9e9;
+  --ink: #201e1d;
+  --accent: #ec3013;
+  --divider: color-mix(in srgb, #201e1d 40%, transparent);
+  --n200: #eae7e7;
+  --n300: #d7d3d3;
+  --n400: #bab6b6;
+  --n600: #7d7979;
+  --n700: #605d5d;
+  --a100: #fff2ef;
+  --a600: #dd2b0f;
+  --a700: #ae1800;
+  --a800: #7c1405;
+  --head: "Archivo", "Noto Sans KR", system-ui, sans-serif;
+  --body: "Archivo", "Noto Sans KR", system-ui, sans-serif;
+}
 
+.wf-shell {
+  min-height: 100dvh;
+  background: #e4e2e2;
+  display: flex;
+  justify-content: center;
+}
+.wf-app {
+  width: 100%;
+  max-width: 460px;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.wf-app :deep(*) { box-sizing: border-box; }
+@media (min-width: 520px) {
+  .wf-shell { padding: 28px 16px; align-items: flex-start; }
+  .wf-app { min-height: min(920px, calc(100dvh - 56px)); border: 1px solid var(--divider); box-shadow: 0 12px 40px color-mix(in srgb, #201e1d 18%, transparent); }
+}
+
+/* 공통 요소 */
+.wf-kicker { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--n600); font-weight: 600; }
+.wf-muted { color: var(--n600); font-size: 14px; margin: 0; }
+.wf-err { margin: 12px 20px; padding: 10px 14px; background: var(--a100); color: var(--a800); font-size: 13px; font-weight: 600; border-left: 3px solid var(--accent); }
+.wf-note { padding: 40px 20px; text-align: center; color: var(--n600); }
+.wf-linkbtn { border: none; background: none; padding: 0; font-family: var(--head); font-weight: 800; font-size: 12px; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.wf-saving { font-size: 12px; color: var(--n600); }
+
+/* 헤더 */
 .wf-head {
-  display: flex; align-items: flex-end; justify-content: space-between;
-  gap: var(--space-base); margin-bottom: var(--space-lg); flex-wrap: wrap;
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 10px;
+  padding: calc(env(safe-area-inset-top) + 18px) 20px 12px;
+  background: var(--bg); border-bottom: 2px solid var(--divider);
 }
-.wf-title { margin: 0; font-size: 22px; font-weight: 700; color: var(--ink); }
-.wf-who { display: flex; align-items: center; gap: var(--space-sm); }
-.wf-who__name { font-size: 15px; font-weight: 600; color: var(--ink); }
-
-.wf-error { margin: 0 0 var(--space-sm); font-size: 14px; color: var(--error); }
-.wf-muted { color: var(--muted); font-size: 14px; }
-
-.wf-btn {
-  padding: 8px 14px; border: 1px solid var(--hairline); border-radius: 8px;
-  background: var(--canvas); color: var(--body-text); font-size: 13px; font-weight: 600; cursor: pointer;
-}
-.wf-btn:hover:not(:disabled) { border-color: var(--ink); }
-.wf-btn:disabled { opacity: 0.5; cursor: default; }
-.wf-btn--primary { background: var(--ink); color: #fff; border-color: var(--ink); }
-.wf-btn--ghost { background: transparent; }
-
-.wf-empty {
-  padding: var(--space-2xl); text-align: center; color: var(--muted);
-  border: 1px dashed var(--hairline); border-radius: 14px;
-  display: flex; flex-direction: column; align-items: center; gap: var(--space-base);
+.wf-head__l { display: flex; align-items: baseline; gap: 9px; }
+.wf-head__title { font-family: var(--head); font-weight: 800; font-size: 21px; letter-spacing: -0.015em; }
+.wf-head__r { display: flex; align-items: center; gap: 12px; }
+.wf-monthsel {
+  font-family: var(--head); font-weight: 600; font-size: 12px; color: var(--n700);
+  background: var(--bg); border: 1px solid var(--divider); border-radius: 0; padding: 5px 8px; cursor: pointer;
 }
 
-/* ── 모드 0: 식별 (크게) ── */
-.wf-identify {
-  max-width: 460px; margin: 4vh auto 0; text-align: center;
-}
-.wf-identify__title { margin: 0 0 8px; font-size: 26px; font-weight: 800; color: var(--ink); }
-.wf-identify__sub { margin: 0 0 var(--space-lg); font-size: 16px; color: var(--body-text); }
-.wf-identify__form { display: flex; flex-direction: column; gap: var(--space-base); text-align: left; }
-.wf-bigfield { display: flex; flex-direction: column; gap: 6px; font-size: 15px; font-weight: 600; color: var(--ink); }
-.wf-biginput {
-  padding: 16px; border: 2px solid var(--hairline); border-radius: 12px;
-  font-size: 20px; color: var(--ink); background: var(--canvas); outline: none;
-}
-.wf-biginput:focus { border-color: var(--primary); }
-.wf-bigbtn {
-  margin-top: 4px; padding: 18px; border: none; border-radius: 12px;
-  background: var(--primary); color: #fff; font-size: 20px; font-weight: 700; cursor: pointer;
-}
-.wf-bigbtn:disabled { opacity: 0.6; cursor: default; }
-.wf-bigbtn--save { margin: 0; padding: 16px 24px; white-space: nowrap; }
-.wf-bigbtn--outline { background: var(--canvas); color: var(--ink); border: 2px solid var(--hairline); }
-.wf-bigbtn--outline:hover { border-color: var(--ink); }
-.wf-identify__hint { margin: 4px 0 0; font-size: 13px; color: var(--muted); text-align: center; }
+/* 바디 */
+.wf-body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+.wf-empty { padding: 48px 20px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.wf-empty__t { font-family: var(--head); font-weight: 800; font-size: 16px; margin: 0; }
 
-/* ── 모드 1: 내 세대 (크게) ── */
-.wf-monthbar { margin-bottom: var(--space-base); }
-.wf-monthbar__label { font-size: 16px; font-weight: 700; color: var(--ink); }
-.wf-select {
-  padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 8px;
-  background: var(--canvas); color: var(--ink); font-size: 15px;
-}
-.wf-mecard {
-  padding: var(--space-lg); border: 1px solid var(--hairline-soft);
-  border-radius: 18px; background: var(--surface-soft); margin-bottom: var(--space-base);
-}
-.wf-mecard__unit { margin: 0 0 var(--space-base); font-size: 20px; font-weight: 700; color: var(--ink); }
-.wf-mecard__unit strong { font-size: 24px; }
-.wf-reading {
-  display: flex; gap: var(--space-sm); align-items: flex-end; flex-wrap: wrap;
-}
-.wf-reading__label { flex-basis: 100%; font-size: 16px; font-weight: 700; color: var(--ink); }
-.wf-reading__input {
-  flex: 1; min-width: 140px; padding: 16px; border: 2px solid var(--primary); border-radius: 12px;
-  font-size: 24px; text-align: right; color: var(--ink); background: var(--canvas); outline: none;
-}
-.wf-reading__prev { margin: 8px 0 var(--space-base); font-size: 14px; color: var(--muted); }
+/* 식별 */
+.wf-identify { padding: 8px 20px 32px; }
+.wf-identify__hero { padding: 28px 0; border-bottom: 2px solid var(--divider); }
+.wf-identify__title { font-family: var(--head); font-weight: 800; font-size: 32px; line-height: 1.12; letter-spacing: -0.02em; margin: 10px 0 0; }
+.wf-identify__sub { margin: 10px 0 0; font-size: 14px; color: var(--n700); }
+.wf-identify__form { display: flex; flex-direction: column; gap: 16px; padding-top: 24px; }
+.wf-identify__hint { margin: 0; font-size: 12px; color: var(--n600); }
 
-.wf-mestats { display: flex; gap: var(--space-sm); margin: 0 0 var(--space-base); }
-.wf-mestats > div {
-  flex: 1; padding: var(--space-base); background: var(--canvas);
-  border: 1px solid var(--hairline-soft); border-radius: 12px; text-align: center;
-}
-.wf-mestats dt { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
-.wf-mestats dd { margin: 0; font-size: 22px; font-weight: 700; color: var(--ink); }
-.wf-mestats--pay { background: var(--primary) !important; border-color: var(--primary) !important; }
-.wf-mestats--pay dt { color: rgba(255,255,255,0.85); }
-.wf-mestats--pay dd { color: #fff; }
-
-.wf-medetail { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.wf-medetail li { display: flex; justify-content: space-between; font-size: 14px; color: var(--body-text); padding: 6px 2px; border-bottom: 1px solid var(--hairline-soft); }
-.wf-medetail b { font-variant-numeric: tabular-nums; color: var(--ink); }
-
-.wf-hist { margin: var(--space-base) 0; }
-.wf-hist__title { margin: 0 0 8px; font-size: 15px; font-weight: 700; color: var(--ink); }
-.wf-hist__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.wf-hist__list li {
-  display: grid; grid-template-columns: 1fr auto auto; gap: var(--space-base);
-  padding: 10px 12px; background: var(--surface-soft); border-radius: 10px; font-size: 14px;
-}
-.wf-hist__ym { color: var(--muted); }
-.wf-hist__use { color: var(--body-text); }
-.wf-hist__pay { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
-
-/* ── 모드 2: 전체 보기 ── */
-.wf-allbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); margin-bottom: var(--space-base); }
-.wf-allbar__right { display: flex; align-items: center; gap: var(--space-sm); }
-.wf-saving { font-size: 12px; color: var(--muted); }
-
-.wf-summary {
-  padding: var(--space-base); border: 1px solid var(--hairline-soft);
-  border-radius: 14px; background: var(--surface-soft); margin-bottom: var(--space-lg);
-}
-.wf-summary__title { margin: 0 0 var(--space-base); font-size: 16px; font-weight: 700; color: var(--ink); }
-.wf-summary__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-sm); }
-.wf-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+/* 필드/인풋 */
+.wf-field { display: flex; flex-direction: column; gap: 6px; }
+.wf-field__label { font-size: 12px; color: var(--n700); font-weight: 600; }
 .wf-input {
-  padding: 8px 10px; border: 1px solid var(--hairline); border-radius: 8px;
-  font-size: 14px; color: var(--ink); text-align: right; outline: none; background: var(--canvas);
+  width: 100%; min-height: 40px; padding: 8px 12px; font: inherit; font-size: 15px;
+  color: var(--ink); background: var(--surface); border: 1px solid var(--divider); border-radius: 0;
+  caret-color: var(--accent); outline: none;
 }
-.wf-input:focus { border-color: var(--ink); }
-.wf-input[readonly] { background: var(--surface-soft); color: var(--body-text); }
-.wf-field--calc { justify-content: space-between; padding: 8px 10px; background: var(--canvas); border: 1px solid var(--hairline-soft); border-radius: 8px; }
-.wf-field--calc strong { font-size: 15px; color: var(--ink); }
+.wf-input:focus-visible { border-color: var(--accent); }
+.wf-input--lg { min-height: 52px; font-size: 18px; }
+.wf-input--r { text-align: right; }
+.wf-field--row { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+.wf-field--row .wf-field__label { flex: none; }
+.wf-field--row .wf-input { max-width: 150px; }
 
-/* ── 추가비용 ── */
-.wf-extra {
-  padding: var(--space-base); border: 1px solid var(--hairline-soft);
-  border-radius: 14px; background: var(--surface-soft); margin-bottom: var(--space-lg);
-}
-.wf-extra__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-sm); flex-wrap: wrap; margin-bottom: var(--space-sm); }
-.wf-extra__title { margin: 0; font-size: 15px; font-weight: 700; color: var(--ink); }
-.wf-extra__title .wf-muted { font-size: 12px; font-weight: 400; }
-.wf-extra__total { font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
-.wf-extra__list { list-style: none; margin: 0 0 var(--space-sm); padding: 0; display: grid; gap: 6px; }
-.wf-extra__row { display: flex; gap: var(--space-sm); align-items: center; }
-.wf-extra__name { flex: 1; text-align: left; }
-.wf-extra__amount { width: 120px; }
-.wf-extra__row--ro { justify-content: space-between; font-size: 14px; color: var(--body-text); padding: 6px 2px; border-bottom: 1px solid var(--hairline-soft); }
-.wf-extra__row--ro b { font-variant-numeric: tabular-nums; color: var(--ink); }
-.wf-extra-names { display: block; font-style: normal; font-size: 12px; color: var(--muted); }
+/* 버튼 */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-family: var(--head); font-weight: 800; font-size: 14px; line-height: 1.2; color: var(--ink); background: transparent; border: 1px solid transparent; border-radius: 0; padding: 10px 16px; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--a600); }
+.btn-primary:active:not(:disabled) { background: var(--a700); }
+.btn-secondary { border-color: var(--divider); }
+.btn-secondary:hover:not(:disabled) { background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.wf-btn-lg { min-height: 52px; font-size: 16px; width: 100%; }
 
-.wf-table-wrap { overflow-x: auto; }
-.wf-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 760px; }
-.wf-table th, .wf-table td { border: 1px solid var(--hairline); padding: 6px 8px; text-align: center; }
-.wf-table thead th { background: var(--surface-strong); color: var(--ink); font-weight: 600; font-size: 12px; }
-.wf-table tbody th { font-weight: 600; color: var(--ink); background: var(--surface-soft); white-space: nowrap; }
-.wf-num { text-align: right; font-variant-numeric: tabular-nums; }
-.wf-pay { font-weight: 700; color: var(--ink); }
-.wf-cell {
-  width: 100%; max-width: 90px; padding: 4px 6px; border: 1px solid transparent; border-radius: 6px;
-  font-size: 13px; text-align: right; color: var(--ink); background: var(--canvas); outline: none;
-}
-.wf-cell:hover { border-color: var(--hairline); }
-.wf-cell:focus { border-color: var(--ink); background: var(--surface-soft); }
-.wf-cell--sm { max-width: 56px; }
-.wf-table tr.is-manager { background: rgba(255, 56, 92, 0.04); }
-.wf-table tr.is-me th { box-shadow: inset 3px 0 0 var(--primary); }
-.wf-tag { margin-left: 4px; font-size: 10px; color: var(--primary); border: 1px solid var(--primary); border-radius: 6px; padding: 0 4px; }
-.wf-table tfoot th, .wf-table tfoot td { background: var(--surface-strong); font-weight: 700; color: var(--ink); }
-.wf-hint { margin: var(--space-sm) 0 0; font-size: 12px; color: var(--muted-soft); }
+/* 태그 */
+.tag { display: inline-flex; align-items: center; font-size: 11px; letter-spacing: 0.02em; padding: 3px 9px; border-radius: 0; font-weight: 600; }
+.tag-accent { background: var(--a100); color: var(--a800); }
+.tag-outline { border: 1px solid var(--accent); color: var(--accent); }
 
-.wf-mgrtools { margin-top: var(--space-lg); padding: var(--space-base); border: 1px solid var(--hairline-soft); border-radius: 12px; }
-.wf-mgrtools__title { margin: 0 0 4px; font-size: 15px; font-weight: 700; color: var(--ink); }
-.wf-mgrtools__row { display: flex; gap: var(--space-sm); margin-top: var(--space-sm); }
+/* 우리집 - 히어로 */
+.wf-hero { padding: 24px 20px; border-bottom: 2px solid var(--divider); }
+.wf-hero__amt { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; }
+.wf-hero__amt b { font-family: var(--head); font-weight: 800; font-size: 44px; line-height: 1; letter-spacing: -0.02em; }
+.wf-hero__amt span { font-family: var(--head); font-weight: 800; font-size: 20px; }
+.wf-tagrow { display: flex; gap: 6px; margin-top: 14px; }
 
-@media (max-width: 640px) {
-  .wf-main { padding: var(--space-base); }
-  .wf-mestats { flex-direction: column; }
-}
+.wf-grid2 { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 2px solid var(--divider); }
+.wf-cell { padding: 16px 20px; }
+.wf-cell:first-child { border-right: 2px solid var(--divider); }
+.wf-cell__v { font-family: var(--head); font-weight: 800; font-size: 24px; margin-top: 6px; }
+.wf-cell__v em { font-style: normal; font-size: 14px; font-weight: 600; color: var(--n600); margin-left: 2px; }
+.wf-cell__sub { font-size: 12px; color: var(--n600); margin-top: 2px; }
+
+/* 섹션 */
+.wf-sec { padding: 18px 20px; border-bottom: 2px solid var(--divider); display: flex; flex-direction: column; }
+.wf-sec:last-child { border-bottom: none; }
+.wf-sec--actions { gap: 10px; }
+.wf-sechead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-bottom: 8px; margin-bottom: 4px; border-bottom: 2px solid var(--divider); }
+.wf-sechead > span:first-child { font-family: var(--head); font-weight: 800; font-size: 15px; }
+
+/* 검침 입력 */
+.wf-readrow { display: flex; gap: 8px; margin-top: 12px; }
+.wf-readinput { flex: 1; min-width: 0; min-height: 56px; padding: 10px 14px; font-family: var(--head); font-weight: 800; font-size: 26px; text-align: right; color: var(--ink); background: var(--surface); border: 1px solid var(--accent); border-radius: 0; outline: none; }
+.wf-savebtn { flex: none; min-height: 56px; padding-inline: 22px; font-size: 16px; }
+
+/* 라인 항목 */
+.wf-line { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--n300); }
+.wf-line:last-child { border-bottom: none; }
+.wf-line__l { font-size: 14px; font-weight: 600; }
+.wf-line__l em { display: block; font-style: normal; font-size: 12px; font-weight: 400; color: var(--n600); margin-top: 1px; }
+.wf-line__v { font-family: var(--head); font-weight: 800; font-size: 15px; white-space: nowrap; }
+.wf-line--total { border-top: 2px solid var(--divider); border-bottom: none; margin-top: 4px; padding-top: 14px; }
+.wf-line--total .wf-line__l { font-family: var(--head); font-weight: 800; font-size: 15px; }
+.wf-line__total { font-family: var(--head); font-weight: 800; font-size: 24px; letter-spacing: -0.02em; color: var(--a700); }
+
+/* 차트 */
+.wf-chart { display: flex; align-items: flex-end; gap: 10px; height: 130px; margin-top: 12px; border-bottom: 2px solid var(--divider); }
+.wf-chart__col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 5px; height: 100%; }
+.wf-chart__val { font-family: var(--head); font-weight: 800; font-size: 11px; color: var(--n600); }
+.wf-chart__val.is-latest { color: var(--a700); }
+.wf-chart__bar { width: 100%; max-width: 32px; background: var(--n400); }
+.wf-chart__bar.is-latest { background: var(--accent); }
+.wf-chart__labels { display: flex; gap: 10px; margin-top: 6px; }
+.wf-chart__lb { flex: 1; text-align: center; font-size: 11px; color: var(--n600); }
+.wf-chart__lb.is-latest { font-weight: 800; font-family: var(--head); color: var(--ink); }
+
+/* 전체 세대 */
+.wf-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; border-bottom: 2px solid var(--divider); }
+.wf-stat { padding: 14px 16px; }
+.wf-stat + .wf-stat { border-left: 2px solid var(--divider); }
+.wf-stat__v { font-family: var(--head); font-weight: 800; font-size: 20px; margin-top: 4px; }
+.wf-stat__v--sm { font-size: 15px; }
+.wf-stat__v em { font-style: normal; font-size: 12px; font-weight: 600; color: var(--n600); }
+.wf-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 20px; border-bottom: 2px solid var(--divider); }
+
+.wf-units { padding: 4px 20px 8px; }
+.wf-units__head { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; padding: 10px 0 8px; border-bottom: 2px solid var(--divider); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--n600); }
+.wf-units__ru { text-align: right; min-width: 48px; }
+.wf-units__rf { text-align: right; min-width: 70px; }
+.wf-unit { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: baseline; width: 100%; padding: 13px 0; border-bottom: 1px solid var(--n300); background: none; text-align: left; font: inherit; color: inherit; }
+.wf-unit.is-btn { border-left: none; cursor: pointer; }
+.wf-unit.is-btn:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.wf-unit.is-mine { background: var(--a100); }
+.wf-unit.is-open { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.wf-unit__name { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; }
+.wf-unit__u { text-align: right; min-width: 48px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.wf-unit__f { text-align: right; min-width: 70px; font-family: var(--head); font-weight: 800; font-size: 14px; white-space: nowrap; }
+.wf-edit { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--n300); background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.wf-edit .wf-field { padding: 0 4px; }
+
+/* 추가비용 편집 */
+.wf-extrarow { display: flex; gap: 8px; margin-bottom: 8px; }
+.wf-input--amt { max-width: 110px; text-align: right; }
+.wf-x { flex: none; width: 40px; border: 1px solid var(--divider); background: var(--bg); color: var(--n700); cursor: pointer; font-size: 13px; }
+.wf-x:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.wf-add { margin-top: 4px; }
+.wf-resetrow { display: flex; gap: 8px; }
+.wf-resetrow .wf-input { max-width: 90px; }
+
+.wf-hint { margin: 10px 20px 0; font-size: 12px; color: var(--n600); }
+
+/* 하단 탭 */
+.wf-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border-top: 2px solid var(--divider); background: var(--surface); padding-bottom: env(safe-area-inset-bottom); }
+.wf-tab { height: 54px; border: none; border-top: 3px solid transparent; background: none; cursor: pointer; font-family: var(--head); font-weight: 800; font-size: 12.5px; color: var(--n600); letter-spacing: 0.02em; }
+.wf-tab:hover { background: var(--n200); }
+.wf-tab.is-on { border-top-color: var(--accent); color: var(--ink); }
 </style>
