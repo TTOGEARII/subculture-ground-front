@@ -311,6 +311,10 @@ function errMsg(e: unknown, fallback: string): string {
 
         <!-- ── 로그인 후 ── -->
         <template v-else>
+          <div v-if="statement && !statement.allEntered" class="wf-provisional">
+            <b>{{ statement.enteredCount }}/15 세대 입력</b> · 나머지는 지난달로 추정한 <b>잠정 금액</b>이에요. 모두 입력되면 확정됩니다.
+          </div>
+
           <!-- 우리 집 -->
           <template v-if="tab === 'mine'">
             <section v-if="!statement" class="wf-empty">
@@ -319,11 +323,12 @@ function errMsg(e: unknown, fallback: string): string {
             </section>
             <template v-else>
               <div class="wf-hero">
-                <span class="wf-kicker">이번 달 낼 금액</span>
+                <span class="wf-kicker">{{ statement.allEntered ? '이번 달 낼 금액' : '이번 달 예상 금액' }}</span>
                 <div class="wf-hero__amt"><b>{{ won(myRow?.payment ?? 0) }}</b><span>원</span></div>
                 <div class="wf-tagrow">
-                  <span class="tag tag-accent">사용 {{ myRow?.usage ?? 0 }}톤</span>
-                  <span v-if="myRow?.isManager" class="tag tag-outline">반장</span>
+                  <span class="tag tag-accent">{{ myRow?.estimated ? '예상 ' : '사용 ' }}{{ myRow?.usage ?? 0 }}톤</span>
+                  <span v-if="myRow?.estimated" class="tag tag-outline">검침 전 · 잠정</span>
+                  <span v-else-if="myRow?.isManager" class="tag tag-outline">반장</span>
                 </div>
               </div>
 
@@ -430,9 +435,10 @@ function errMsg(e: unknown, fallback: string): string {
                       {{ row.unitNo }}호
                       <span v-if="row.unitNo === me.unitNo" class="tag tag-accent">우리집</span>
                       <span v-if="row.isManager" class="tag tag-outline">반장</span>
+                      <span v-if="row.estimated" class="wf-est">예상</span>
                     </span>
-                    <span class="wf-unit__u">{{ row.usage }}톤</span>
-                    <span class="wf-unit__f">{{ won(row.payment) }}원</span>
+                    <span class="wf-unit__u" :class="{ 'is-est': row.estimated }">{{ row.usage }}톤</span>
+                    <span class="wf-unit__f" :class="{ 'is-est': row.estimated }">{{ won(row.payment) }}원</span>
                   </component>
                   <div v-if="me.isManager && editingUnit === row.unitNo" :key="row.unitNo + '-e'" class="wf-edit">
                     <label class="wf-field"><span class="wf-field__label">이전 검침</span>
@@ -629,6 +635,12 @@ function errMsg(e: unknown, fallback: string): string {
 .tag { display: inline-flex; align-items: center; font-size: 11px; letter-spacing: 0.02em; padding: 3px 9px; border-radius: 0; font-weight: 600; }
 .tag-accent { background: var(--a100); color: var(--a800); }
 .tag-outline { border: 1px solid var(--accent); color: var(--accent); }
+
+/* 잠정/예상 */
+.wf-provisional { padding: 11px 20px; background: var(--a100); color: var(--a800); font-size: 12.5px; line-height: 1.5; border-bottom: 2px solid var(--divider); }
+.wf-provisional b { font-weight: 800; }
+.wf-est { font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--n600); border: 1px dashed var(--n400); padding: 1px 5px; }
+.wf-unit__u.is-est, .wf-unit__f.is-est { color: var(--n600); }
 
 /* 우리집 - 히어로 */
 .wf-hero { padding: 24px 20px; border-bottom: 2px solid var(--divider); }
