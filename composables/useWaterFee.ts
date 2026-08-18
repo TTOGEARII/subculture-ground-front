@@ -19,6 +19,7 @@ export interface UnitRow {
   extra: number
   payment: number
   isManager: boolean
+  estimated: boolean
 }
 
 export interface Statement {
@@ -34,6 +35,8 @@ export interface Statement {
   bureauDiff: number
   totalLaborFee: number
   totalExtra: number
+  enteredCount: number
+  allEntered: boolean
   rows: UnitRow[]
   totals: {
     usage: number
@@ -67,6 +70,7 @@ export interface HistoryRow {
   discount: number
   payment: number
   isManager: boolean
+  estimated?: boolean
 }
 
 /** 세대 신원 (호수 + 아이디) */
