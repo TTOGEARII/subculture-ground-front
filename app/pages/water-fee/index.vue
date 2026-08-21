@@ -110,8 +110,9 @@ const load = async (ym: string) => {
   statement.value = await getStatement(ym)
   selectedMonth.value = ym
   readingInput.value = myRow.value ? myRow.value.currReading : null
-  extraDraft.value = (statement.value.extraCosts ?? []).map((c) => ({ ...c }))
+  extraDraft.value = (statement.value.extraCosts ?? []).map((c) => ({ name: c.name, amount: c.amount, excludedUnits: [...(c.excludedUnits ?? [])] }))
   editingUnit.value = ''
+  exclOpen.value = -1
 }
 watch(selectedMonth, (ym) => {
   if (ym && ym !== statement.value?.yearMonth) load(ym).catch(() => (errorText.value = '불러오기 실패'))
@@ -213,16 +214,27 @@ const changeManager = async (e: Event) => {
 }
 
 // ── 추가비용 ──
-const addExtra = () => extraDraft.value.push({ name: '', amount: 0 })
+const exclOpen = ref(-1) // 제외 세대 편집 패널이 열린 항목 인덱스
+const addExtra = () => extraDraft.value.push({ name: '', amount: 0, excludedUnits: [] })
 const removeExtra = async (i: number) => {
   extraDraft.value.splice(i, 1)
+  if (exclOpen.value === i) exclOpen.value = -1
+  await commitExtra()
+}
+const toggleExclPanel = (i: number) => { exclOpen.value = exclOpen.value === i ? -1 : i }
+const toggleUnitExcl = async (i: number, unitNo: string) => {
+  const c = extraDraft.value[i]
+  const ex = c.excludedUnits ?? (c.excludedUnits = [])
+  const at = ex.indexOf(unitNo)
+  if (at >= 0) ex.splice(at, 1)
+  else ex.push(unitNo)
   await commitExtra()
 }
 const commitExtra = async () => {
   if (!me.value || !statement.value) return
   const clean = extraDraft.value
     .filter((c) => c.name.trim() !== '')
-    .map((c) => ({ name: c.name.trim(), amount: Number(c.amount) || 0 }))
+    .map((c) => ({ name: c.name.trim(), amount: Number(c.amount) || 0, excludedUnits: c.excludedUnits ?? [] }))
   saving.value = true
   try {
     statement.value = await saveExtraCosts(statement.value.yearMonth, me.value, clean)
@@ -361,7 +373,7 @@ function errMsg(e: unknown, fallback: string): string {
                 <div class="wf-line"><span class="wf-line__l">수고비</span><span class="wf-line__v">{{ won(myRow?.labor ?? 0) }}원</span></div>
                 <div class="wf-line"><span class="wf-line__l">전기·계단청소</span><span class="wf-line__v">{{ won(myRow?.elecStair ?? 0) }}원</span></div>
                 <div v-if="(myRow?.extra ?? 0) > 0" class="wf-line">
-                  <span class="wf-line__l">추가비용<em v-if="statement.extraCosts.length">{{ statement.extraCosts.map((c) => c.name).join(', ') }}</em></span>
+                  <span class="wf-line__l">추가비용<em>{{ statement.extraCosts.filter((c) => !(c.excludedUnits ?? []).includes(me.unitNo)).map((c) => c.name).join(', ') }}</em></span>
                   <span class="wf-line__v">{{ won(myRow?.extra ?? 0) }}원</span>
                 </div>
                 <div v-if="(myRow?.discount ?? 0) > 0" class="wf-line"><span class="wf-line__l">감면</span><span class="wf-line__v">−{{ won(myRow?.discount ?? 0) }}원</span></div>
@@ -477,11 +489,25 @@ function errMsg(e: unknown, fallback: string): string {
               </div>
 
               <div class="wf-sec">
-                <div class="wf-sechead"><span>추가비용</span><span v-if="statement.totalExtra > 0" class="wf-kicker">세대당 {{ won(statement.totals.extra / 15) }}원</span></div>
-                <div v-for="(c, i) in extraDraft" :key="i" class="wf-extrarow">
-                  <input v-model="c.name" type="text" class="wf-input" placeholder="항목명 (예: 소독비)" @change="commitExtra" />
-                  <input v-model.number="c.amount" type="number" class="wf-input wf-input--amt" placeholder="금액" @change="commitExtra" />
-                  <button type="button" class="wf-x" :disabled="saving" aria-label="삭제" @click="removeExtra(i)">✕</button>
+                <div class="wf-sechead"><span>추가비용</span><span v-if="statement.totalExtra > 0" class="wf-kicker">합계 {{ won(statement.totalExtra) }}원</span></div>
+                <div v-for="(c, i) in extraDraft" :key="i" class="wf-extraitem">
+                  <div class="wf-extrarow">
+                    <input v-model="c.name" type="text" class="wf-input" placeholder="항목명 (예: 소독비)" @change="commitExtra" />
+                    <input v-model.number="c.amount" type="number" class="wf-input wf-input--amt" placeholder="금액" @change="commitExtra" />
+                    <button type="button" class="wf-x" :disabled="saving" aria-label="삭제" @click="removeExtra(i)">✕</button>
+                  </div>
+                  <button type="button" class="wf-excl-btn" @click="toggleExclPanel(i)">
+                    제외 세대 {{ (c.excludedUnits?.length || 0) }}곳
+                    <span v-if="(c.excludedUnits?.length || 0)" class="wf-excl-list">· {{ c.excludedUnits!.join(', ') }}</span>
+                    <span class="wf-excl-caret">{{ exclOpen === i ? '▲' : '▾' }}</span>
+                  </button>
+                  <div v-if="exclOpen === i" class="wf-excl-grid">
+                    <button
+                      v-for="u in UNIT_NUMBERS" :key="u" type="button"
+                      class="wf-excl-cell" :class="{ 'is-excl': (c.excludedUnits ?? []).includes(u) }"
+                      :disabled="saving" @click="toggleUnitExcl(i, u)"
+                    >{{ u }}</button>
+                  </div>
                 </div>
                 <button type="button" class="btn btn-secondary wf-add" :disabled="saving" @click="addExtra">＋ 추가비용 항목</button>
               </div>
@@ -714,11 +740,20 @@ function errMsg(e: unknown, fallback: string): string {
 .wf-edit .wf-field { padding: 0 4px; }
 
 /* 추가비용 편집 */
-.wf-extrarow { display: flex; gap: 8px; margin-bottom: 8px; }
+.wf-extraitem { border: 1px solid var(--divider); padding: 10px; margin-bottom: 10px; }
+.wf-extrarow { display: flex; gap: 8px; }
 .wf-input--amt { max-width: 110px; text-align: right; }
 .wf-x { flex: none; width: 40px; border: 1px solid var(--divider); background: var(--bg); color: var(--n700); cursor: pointer; font-size: 13px; }
 .wf-x:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .wf-add { margin-top: 4px; }
+.wf-excl-btn { width: 100%; margin-top: 8px; padding: 7px 10px; border: 1px dashed var(--n400); background: none; color: var(--n700); font-family: var(--head); font-weight: 700; font-size: 12px; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+.wf-excl-btn:hover { border-color: var(--ink); color: var(--ink); }
+.wf-excl-list { font-weight: 400; color: var(--n600); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wf-excl-caret { margin-left: auto; }
+.wf-excl-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 8px; }
+.wf-excl-cell { min-height: 34px; border: 1px solid var(--divider); background: var(--bg); color: var(--ink); font-family: var(--head); font-weight: 700; font-size: 12px; cursor: pointer; }
+.wf-excl-cell:hover:not(:disabled) { border-color: var(--ink); }
+.wf-excl-cell.is-excl { background: var(--accent); color: #fff; border-color: var(--accent); }
 .wf-resetrow { display: flex; gap: 8px; }
 .wf-resetrow .wf-input { max-width: 90px; }
 
