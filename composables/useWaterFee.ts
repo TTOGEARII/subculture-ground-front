@@ -21,6 +21,8 @@ export interface UnitRow {
   payment: number
   isManager: boolean
   estimated: boolean
+  thisReading: number
+  thisEntered: boolean
 }
 
 export interface Statement {
@@ -38,6 +40,8 @@ export interface Statement {
   totalExtra: number
   enteredCount: number
   allEntered: boolean
+  thisEnteredCount: number
+  allThisEntered: boolean
   rows: UnitRow[]
   totals: {
     usage: number
@@ -138,11 +142,11 @@ export const useWaterFee = () => {
   }
 
   // ── 일반 세대: 내 검침 저장 ──
-  const saveMyReading = async (ym: string, me: Identity, currReading: number): Promise<Statement> => {
+  const saveMyReading = async (ym: string, me: Identity, thisReading: number): Promise<Statement> => {
     const { data } = await api.put<Statement>(`${stmts}/${ym}/my-reading`, {
       unitNo: me.unitNo,
       residentId: me.residentId,
-      currReading,
+      thisReading,
     })
     return data
   }
