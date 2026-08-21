@@ -3,6 +3,7 @@ import { useApi } from './useUtil'
 export interface ExtraCost {
   name: string
   amount: number
+  excludedUnits?: string[]
 }
 
 export interface UnitRow {
