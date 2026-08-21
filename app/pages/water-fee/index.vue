@@ -70,6 +70,18 @@ const myRow = computed<UnitRow | null>(() =>
   me.value && statement.value ? statement.value.rows.find((r) => r.unitNo === me.value!.unitNo) ?? null : null,
 )
 
+/**
+ * 검침은 정산월보다 앞선 달의 것을 쓴다(월검침 라벨용).
+ * Y월 정산서: 현재검침 = (Y-1)월, 이전검침 = (Y-2)월.  예) 8월 정산 → 6월/7월 검침
+ */
+const readMonth = (ym: string, before: number): number => {
+  const d = new Date(`${ym}-01T00:00:00`)
+  d.setMonth(d.getMonth() - before)
+  return d.getMonth() + 1
+}
+const currReadMonth = computed(() => (statement.value ? readMonth(statement.value.yearMonth, 1) : 0))
+const prevReadMonth = computed(() => (statement.value ? readMonth(statement.value.yearMonth, 2) : 0))
+
 /** 선택월 직전 달 내 사용량 */
 const prevUsage = computed(() => {
   const i = myHistory.value.findIndex((h) => h.yearMonth === selectedMonth.value)
@@ -346,25 +358,26 @@ function errMsg(e: unknown, fallback: string): string {
 
               <div class="wf-grid2">
                 <div class="wf-cell">
-                  <span class="wf-kicker">이번 달 사용량</span>
+                  <span class="wf-kicker">사용량 ({{ prevReadMonth }}→{{ currReadMonth }}월)</span>
                   <div class="wf-cell__v">{{ myRow?.usage ?? 0 }}<em>톤</em></div>
-                  <div class="wf-cell__sub">지난달 {{ prevUsage }}톤</div>
+                  <div class="wf-cell__sub">지난 정산 {{ prevUsage }}톤</div>
                 </div>
                 <div class="wf-cell wf-cell--r">
-                  <span class="wf-kicker">현재 검침</span>
+                  <span class="wf-kicker">{{ currReadMonth }}월 검침</span>
                   <div class="wf-cell__v">{{ myRow?.currReading ?? 0 }}</div>
-                  <div class="wf-cell__sub">지난 검침 {{ myRow?.prevReading ?? 0 }}</div>
+                  <div class="wf-cell__sub">{{ prevReadMonth }}월 검침 {{ myRow?.prevReading ?? 0 }}</div>
                 </div>
               </div>
 
               <div class="wf-sec">
-                <span class="wf-kicker">이번 달 계량기 숫자</span>
+                <span class="wf-kicker">{{ currReadMonth }}월 계량기 숫자</span>
                 <div class="wf-readrow">
                   <input v-model.number="readingInput" type="number" inputmode="numeric" class="wf-readinput" />
                   <button type="button" class="btn btn-primary wf-savebtn" :disabled="saving" @click="submitReading">
                     {{ saving ? '저장 중' : '저장' }}
                   </button>
                 </div>
+                <p class="wf-readhint">{{ prevReadMonth }}월 검침({{ myRow?.prevReading ?? 0 }}) 다음으로, {{ currReadMonth }}월에 잰 계량기 숫자를 넣어 주세요.</p>
               </div>
 
               <div class="wf-sec">
@@ -453,9 +466,9 @@ function errMsg(e: unknown, fallback: string): string {
                     <span class="wf-unit__f" :class="{ 'is-est': row.estimated }">{{ won(row.payment) }}원</span>
                   </component>
                   <div v-if="me.isManager && editingUnit === row.unitNo" :key="row.unitNo + '-e'" class="wf-edit">
-                    <label class="wf-field"><span class="wf-field__label">이전 검침</span>
+                    <label class="wf-field"><span class="wf-field__label">{{ prevReadMonth }}월 검침</span>
                       <input v-model.number="row.prevReading" type="number" class="wf-input" @change="saveU(row, 'prevReading')" /></label>
-                    <label class="wf-field"><span class="wf-field__label">현재 검침</span>
+                    <label class="wf-field"><span class="wf-field__label">{{ currReadMonth }}월 검침</span>
                       <input v-model.number="row.currReading" type="number" class="wf-input" @change="saveU(row, 'currReading')" /></label>
                     <label class="wf-field"><span class="wf-field__label">감면 (원)</span>
                       <input v-model.number="row.discount" type="number" class="wf-input" @change="saveU(row, 'discount')" /></label>
@@ -693,6 +706,7 @@ function errMsg(e: unknown, fallback: string): string {
 .wf-readrow { display: flex; gap: 8px; margin-top: 12px; }
 .wf-readinput { flex: 1; min-width: 0; min-height: 56px; padding: 10px 14px; font-family: var(--head); font-weight: 800; font-size: 26px; text-align: right; color: var(--ink); background: var(--surface); border: 1px solid var(--accent); border-radius: 0; outline: none; }
 .wf-savebtn { flex: none; min-height: 56px; padding-inline: 22px; font-size: 16px; }
+.wf-readhint { margin: 10px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--n600); }
 
 /* 라인 항목 */
 .wf-line { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--n300); }
