@@ -71,8 +71,8 @@ const myRow = computed<UnitRow | null>(() =>
 )
 
 /**
- * 월검침 라벨: 정산서 N월 = (N-2)월~(N-1)월 검침 기간.
- * 현재검침 = (N-1)월, 이전검침 = (N-2)월.  예) 8월 정산 → 이전 6월 / 현재 7월
+ * 월검침 라벨: 정산서 N월 = (N-2)월~(N-1)월로 요금 계산, 이번 달(N월) 검침을 입력.
+ * 이전검침=(N-2)월, 현재검침=(N-1)월(요금), 이번 달 검침=N월(입력→다음 달 현재검침).
  */
 const readMonth = (ym: string, before: number): number => {
   const d = new Date(`${ym}-01T00:00:00`)
@@ -81,6 +81,7 @@ const readMonth = (ym: string, before: number): number => {
 }
 const currReadMonth = computed(() => (statement.value ? readMonth(statement.value.yearMonth, 1) : 0))
 const prevReadMonth = computed(() => (statement.value ? readMonth(statement.value.yearMonth, 2) : 0))
+const thisReadMonth = computed(() => (statement.value ? monthNum(statement.value.yearMonth) : 0))
 
 /** 선택월 직전 달 내 사용량 */
 const prevUsage = computed(() => {
@@ -121,7 +122,7 @@ onMounted(async () => {
 const load = async (ym: string) => {
   statement.value = await getStatement(ym)
   selectedMonth.value = ym
-  readingInput.value = myRow.value ? myRow.value.currReading : null
+  readingInput.value = myRow.value ? (myRow.value.thisReading || null) : null
   extraDraft.value = (statement.value.extraCosts ?? []).map((c) => ({ name: c.name, amount: c.amount, excludedUnits: [...(c.excludedUnits ?? [])] }))
   editingUnit.value = ''
   exclOpen.value = -1
@@ -145,7 +146,7 @@ const submitIdentify = async () => {
     me.value = await verifyHousehold(fUnit.value, fId.value.trim())
     localStorage.setItem(ME_KEY, JSON.stringify(me.value))
     tab.value = 'mine'
-    readingInput.value = myRow.value ? myRow.value.currReading : null
+    readingInput.value = myRow.value ? (myRow.value.thisReading || null) : null
     await loadHistory()
   } catch (e: unknown) {
     idError.value = errMsg(e, '확인에 실패했어요.')
@@ -206,7 +207,7 @@ const saveG = async (field: 'totalWaterFee' | 'commonElectricity' | 'bureauTotal
     statement.value = await saveGlobals(statement.value.yearMonth, me.value, { [field]: statement.value[field] })
   } catch (e: unknown) { errorText.value = errMsg(e, '저장 실패') } finally { saving.value = false }
 }
-const saveU = async (row: UnitRow, field: 'prevReading' | 'currReading' | 'households' | 'discount') => {
+const saveU = async (row: UnitRow, field: 'prevReading' | 'currReading' | 'households' | 'discount' | 'thisReading') => {
   if (!me.value || !statement.value) return
   saving.value = true
   try {
@@ -360,24 +361,24 @@ function errMsg(e: unknown, fallback: string): string {
                 <div class="wf-cell">
                   <span class="wf-kicker">사용량 ({{ prevReadMonth }}→{{ currReadMonth }}월)</span>
                   <div class="wf-cell__v">{{ myRow?.usage ?? 0 }}<em>톤</em></div>
-                  <div class="wf-cell__sub">지난 정산 {{ prevUsage }}톤</div>
+                  <div class="wf-cell__sub">{{ prevReadMonth }}월 {{ myRow?.prevReading ?? 0 }} → {{ currReadMonth }}월 {{ myRow?.currReading ?? 0 }}</div>
                 </div>
                 <div class="wf-cell wf-cell--r">
-                  <span class="wf-kicker">{{ currReadMonth }}월 검침</span>
-                  <div class="wf-cell__v">{{ myRow?.currReading ?? 0 }}</div>
-                  <div class="wf-cell__sub">{{ prevReadMonth }}월 검침 {{ myRow?.prevReading ?? 0 }}</div>
+                  <span class="wf-kicker">{{ thisReadMonth }}월 검침</span>
+                  <div class="wf-cell__v">{{ myRow?.thisEntered ? myRow?.thisReading : '—' }}</div>
+                  <div class="wf-cell__sub">{{ myRow?.thisEntered ? '입력됨' : '아래에서 입력' }}</div>
                 </div>
               </div>
 
               <div class="wf-sec">
-                <span class="wf-kicker">{{ currReadMonth }}월 계량기 숫자</span>
+                <span class="wf-kicker">{{ thisReadMonth }}월 계량기 숫자 입력</span>
                 <div class="wf-readrow">
-                  <input v-model.number="readingInput" type="number" inputmode="numeric" class="wf-readinput" />
+                  <input v-model.number="readingInput" type="number" inputmode="numeric" class="wf-readinput" placeholder="이번 달 검침" />
                   <button type="button" class="btn btn-primary wf-savebtn" :disabled="saving" @click="submitReading">
                     {{ saving ? '저장 중' : '저장' }}
                   </button>
                 </div>
-                <p class="wf-readhint">{{ prevReadMonth }}월 검침({{ myRow?.prevReading ?? 0 }}) 다음으로, {{ currReadMonth }}월에 잰 계량기 숫자를 넣어 주세요.</p>
+                <p class="wf-readhint">이번 달({{ thisReadMonth }}월)에 잰 계량기 숫자를 넣어 주세요. 지난 {{ currReadMonth }}월 검침은 {{ myRow?.currReading ?? 0 }}였어요. (다음 달 요금에 반영됩니다)</p>
               </div>
 
               <div class="wf-sec">
@@ -466,10 +467,12 @@ function errMsg(e: unknown, fallback: string): string {
                     <span class="wf-unit__f" :class="{ 'is-est': row.estimated }">{{ won(row.payment) }}원</span>
                   </component>
                   <div v-if="me.isManager && editingUnit === row.unitNo" :key="row.unitNo + '-e'" class="wf-edit">
-                    <label class="wf-field"><span class="wf-field__label">{{ prevReadMonth }}월 검침</span>
+                    <label class="wf-field"><span class="wf-field__label">{{ prevReadMonth }}월 검침 (이전)</span>
                       <input v-model.number="row.prevReading" type="number" class="wf-input" @change="saveU(row, 'prevReading')" /></label>
-                    <label class="wf-field"><span class="wf-field__label">{{ currReadMonth }}월 검침</span>
+                    <label class="wf-field"><span class="wf-field__label">{{ currReadMonth }}월 검침 (현재)</span>
                       <input v-model.number="row.currReading" type="number" class="wf-input" @change="saveU(row, 'currReading')" /></label>
+                    <label class="wf-field"><span class="wf-field__label">{{ thisReadMonth }}월 검침 (이번 달)</span>
+                      <input v-model.number="row.thisReading" type="number" class="wf-input" @change="saveU(row, 'thisReading')" /></label>
                     <label class="wf-field"><span class="wf-field__label">감면 (원)</span>
                       <input v-model.number="row.discount" type="number" class="wf-input" @change="saveU(row, 'discount')" /></label>
                     <label class="wf-field"><span class="wf-field__label">가구수</span>
@@ -543,7 +546,10 @@ function errMsg(e: unknown, fallback: string): string {
               </div>
 
               <div class="wf-sec wf-sec--actions">
-                <button type="button" class="btn btn-secondary wf-btn-lg" :disabled="saving" @click="createNext">＋ 새 달 만들기</button>
+                <p class="wf-thisprog">
+                  <b>{{ thisReadMonth }}월 검침</b> {{ statement.thisEnteredCount }}/15 세대 입력됨{{ statement.allThisEntered ? ' · 완료! 새 달을 만들면 이번 달 검침이 현재검침이 됩니다.' : '' }}
+                </p>
+                <button type="button" class="btn btn-secondary wf-btn-lg" :disabled="saving" @click="createNext">＋ 새 달 만들기 ({{ thisReadMonth }}월 검침 → 다음 달)</button>
                 <button type="button" class="btn btn-secondary wf-btn-lg" :disabled="downloading" @click="doDownload">
                   {{ downloading ? '엑셀 만드는 중…' : '⬇ 엑셀 다운로드' }}
                 </button>
@@ -699,6 +705,8 @@ function errMsg(e: unknown, fallback: string): string {
 .wf-sec { padding: 18px 20px; border-bottom: 2px solid var(--divider); display: flex; flex-direction: column; }
 .wf-sec:last-child { border-bottom: none; }
 .wf-sec--actions { gap: 10px; }
+.wf-thisprog { margin: 0 0 2px; font-size: 12.5px; color: var(--n700); }
+.wf-thisprog b { font-weight: 800; color: var(--ink); }
 .wf-sechead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-bottom: 8px; margin-bottom: 4px; border-bottom: 2px solid var(--divider); }
 .wf-sechead > span:first-child { font-family: var(--head); font-weight: 800; font-size: 15px; }
 
