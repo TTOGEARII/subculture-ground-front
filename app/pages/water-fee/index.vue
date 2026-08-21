@@ -71,16 +71,16 @@ const myRow = computed<UnitRow | null>(() =>
 )
 
 /**
- * 검침은 정산월보다 앞선 달의 것을 쓴다(월검침 라벨용).
- * Y월 정산서: 현재검침 = (Y-1)월, 이전검침 = (Y-2)월.  예) 8월 정산 → 6월/7월 검침
+ * 월검침 라벨: 정산서 N월 = N월 검침 기준.
+ * 현재검침 = 정산월(Y), 이전검침 = (Y-1)월.  예) 8월 정산 → 이전 7월 / 현재 8월
  */
 const readMonth = (ym: string, before: number): number => {
   const d = new Date(`${ym}-01T00:00:00`)
   d.setMonth(d.getMonth() - before)
   return d.getMonth() + 1
 }
-const currReadMonth = computed(() => (statement.value ? readMonth(statement.value.yearMonth, 1) : 0))
-const prevReadMonth = computed(() => (statement.value ? readMonth(statement.value.yearMonth, 2) : 0))
+const currReadMonth = computed(() => (statement.value ? monthNum(statement.value.yearMonth) : 0))
+const prevReadMonth = computed(() => (statement.value ? readMonth(statement.value.yearMonth, 1) : 0))
 
 /** 선택월 직전 달 내 사용량 */
 const prevUsage = computed(() => {
