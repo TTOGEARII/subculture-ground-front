@@ -432,13 +432,19 @@ function errMsg(e: unknown, fallback: string): string {
               <div class="wf-sec">
                 <div class="wf-sechead"><span>요금 내역</span></div>
                 <div class="wf-line"><span class="wf-line__l">수도료</span><span class="wf-line__v">{{ won(myRow?.water ?? 0) }}원</span></div>
-                <div class="wf-line"><span class="wf-line__l">수고비</span><span class="wf-line__v">{{ won(myRow?.labor ?? 0) }}원</span></div>
+                <!-- 반장은 수고비를 내지 않고 받는다(0원 줄은 뜻이 없어 숨기고, 아래에서 받는 돈으로 보여준다) -->
+                <div v-if="!myRow?.isManager" class="wf-line"><span class="wf-line__l">수고비</span><span class="wf-line__v">{{ won(myRow?.labor ?? 0) }}원</span></div>
                 <div class="wf-line"><span class="wf-line__l">전기·계단청소</span><span class="wf-line__v">{{ won(myRow?.elecStair ?? 0) }}원</span></div>
                 <div v-if="(myRow?.extra ?? 0) > 0" class="wf-line">
                   <span class="wf-line__l">추가비용<em>{{ statement.extraCosts.filter((c) => !(c.excludedUnits ?? []).includes(me.unitNo)).map((c) => c.name).join(', ') }}</em></span>
                   <span class="wf-line__v">{{ won(myRow?.extra ?? 0) }}원</span>
                 </div>
+                <div v-if="(myRow?.other ?? 0) > 0" class="wf-line"><span class="wf-line__l">기타</span><span class="wf-line__v">{{ won(myRow?.other ?? 0) }}원</span></div>
                 <div v-if="(myRow?.discount ?? 0) > 0" class="wf-line"><span class="wf-line__l">깎아드린 금액</span><span class="wf-line__v">−{{ won(myRow?.discount ?? 0) }}원</span></div>
+                <div v-if="myRow?.isManager" class="wf-line">
+                  <span class="wf-line__l">수고비로 받은 돈<em>다른 {{ statement.rows.length - 1 }}집이 내신 수고비예요</em></span>
+                  <span class="wf-line__v">−{{ won(statement.totalLaborFee) }}원</span>
+                </div>
                 <div class="wf-line wf-line--total"><span class="wf-line__l">내실 돈</span><span class="wf-line__total">{{ won(myRow?.payment ?? 0) }}원</span></div>
               </div>
 
