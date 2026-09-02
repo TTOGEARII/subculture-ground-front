@@ -90,7 +90,7 @@ export interface Me extends Identity {
 }
 
 type GlobalPatch = Partial<Pick<Statement, 'totalWaterFee' | 'commonElectricity' | 'bureauTotalTons' | 'stairCleaningFee'>>
-type UnitPatch = Partial<Pick<UnitRow, 'prevReading' | 'currReading' | 'households' | 'other' | 'discount'>>
+type UnitPatch = Partial<Pick<UnitRow, 'prevReading' | 'currReading' | 'households' | 'other' | 'discount' | 'thisReading'>>
 
 /**
  * 수도요금 정산 API. 계산은 서버가 수행 — 저장하면 계산된 명세서를 그대로 돌려준다.

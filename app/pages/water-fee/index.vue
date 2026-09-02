@@ -60,35 +60,71 @@ const extraDraft = ref<ExtraCost[]>([])
 const resetUnit = ref('')
 const downloading = ref(false)
 
+// 히어로의 "계량기 숫자 적기 ↓" → 입력칸으로 스크롤 + 포커스 (스크롤 컨테이너는 .wf-body)
+const readingSec = ref<HTMLElement | null>(null)
+const readingEl = ref<HTMLInputElement | null>(null)
+const goToReading = () => {
+  readingSec.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  readingEl.value?.focus({ preventScroll: true })
+}
+
 const won = (n: number) => Math.round(n).toLocaleString('ko-KR')
 const dec1 = (n: number) => (Math.round(n * 10) / 10).toLocaleString('ko-KR', { minimumFractionDigits: 1 })
 const monthNum = (ym: string) => Number(ym.split('-')[1] ?? 0)
 
-const tabTitle = computed(() => ({ mine: '우리 집', hist: '사용 내역', all: '전체 세대', manage: '관리' }[tab.value]))
+const tabTitle = computed(() => ({ mine: '우리 집', hist: '쓴 물 내역', all: '전체 집', manage: '관리' }[tab.value]))
 
 const myRow = computed<UnitRow | null>(() =>
   me.value && statement.value ? statement.value.rows.find((r) => r.unitNo === me.value!.unitNo) ?? null : null,
 )
 
+/** 계량기는 매달 20일에 읽고, 요금은 매달 25일까지 낸다. */
+const METER_DAY = 20
+const PAY_DUE_DAY = 25
+
 /**
- * 월검침 라벨: 정산서 N월 = (N-2)월~(N-1)월로 요금 계산, 이번 달(N월) 검침을 입력.
- * 이전검침=(N-2)월, 현재검침=(N-1)월(요금), 이번 달 검침=N월(입력→다음 달 현재검침).
+ * 정산서 N월이 청구하는 기간 = (N-2)월 20일 ~ (N-1)월 20일.
+ * 수도국 고지서가 두 달 늦게 나오는 탓에 생기는 시차라, 화면에서는 "몇 월 검침"이 아니라
+ * 항상 날짜(6월 20일)와 기간(6월 20일 ~ 7월 20일)으로 말한다. 월 이름만 쓰면
+ * "8월 요금 = 8월에 쓴 물"로 읽혀서 이 도메인의 유일한 오해가 거기서 생긴다.
+ *
+ * before=2 → 요금 시작(prevReading) / 1 → 요금 끝(currReading) / 0 → 지금 적는 숫자(thisReading)
  */
-const readMonth = (ym: string, before: number): number => {
+const readingDate = (ym: string, before: number): Date => {
   const d = new Date(`${ym}-01T00:00:00`)
   d.setMonth(d.getMonth() - before)
-  return d.getMonth() + 1
+  d.setDate(METER_DAY)
+  return d
 }
-const currReadMonth = computed(() => (statement.value ? readMonth(statement.value.yearMonth, 1) : 0))
-const prevReadMonth = computed(() => (statement.value ? readMonth(statement.value.yearMonth, 2) : 0))
-const thisReadMonth = computed(() => (statement.value ? monthNum(statement.value.yearMonth) : 0))
+const md = (d: Date) => `${d.getMonth() + 1}월 ${d.getDate()}일`
+const ymd = (d: Date) => `${d.getFullYear()}년 ${md(d)}`
+/** 해가 바뀌면 양쪽에 연도를 붙인다 (2월 정산서 = 2025년 12월 20일 ~ 2026년 1월 20일) */
+const fmtRange = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() ? `${md(a)} ~ ${md(b)}` : `${ymd(a)} ~ ${ymd(b)}`
 
-/** 선택월 직전 달 내 사용량 */
-const prevUsage = computed(() => {
-  const i = myHistory.value.findIndex((h) => h.yearMonth === selectedMonth.value)
-  if (i >= 0 && myHistory.value[i + 1]) return myHistory.value[i + 1].usage
-  return myHistory.value[1]?.usage ?? 0
-})
+const billStart = computed(() => (statement.value ? readingDate(statement.value.yearMonth, 2) : null))
+const billEnd = computed(() => (statement.value ? readingDate(statement.value.yearMonth, 1) : null))
+const readDay = computed(() => (statement.value ? readingDate(statement.value.yearMonth, 0) : null))
+/** "6월 20일 ~ 7월 20일" — 이번 요금이 청구하는 기간 */
+const billPeriod = computed(() => (billStart.value && billEnd.value ? fmtRange(billStart.value, billEnd.value) : ''))
+/** "7월 20일 ~ 8월 20일" — 지금 적는 숫자가 만들 다음 달 기간 */
+const nextPeriod = computed(() => (billEnd.value && readDay.value ? fmtRange(billEnd.value, readDay.value) : ''))
+const billMonth = computed(() => (statement.value ? monthNum(statement.value.yearMonth) : 0))
+/** 정산서 다음 달 = 지금 적는 숫자가 요금이 되는 달 */
+const nextBillMonth = computed(() => (billMonth.value % 12) + 1)
+
+/**
+ * 월 선택기 라벨. 연도는 반드시 남긴다 — 이력이 13개월을 넘으면 "8월"이 두 개가 되어 구분이 안 된다.
+ * 기간(6월 20일~7월 20일)은 히어로 주문장에 크게 나오므로 여기선 빼서 헤더 폭을 지킨다.
+ */
+const monthLabel = (ym: string) => `${ym.split('-')[0]}년 ${monthNum(ym)}월 요금`
+
+/** 새 달 만들기는 항상 '가장 최근 정산서'의 다음 달이다(createNext와 같은 기준) */
+const isLatest = computed(() => !!selectedMonth.value && selectedMonth.value === months.value[0]?.yearMonth)
+const nextYm = computed(() => nextMonth(months.value[0]?.yearMonth))
+const nextYmMonth = computed(() => monthNum(nextYm.value))
+/** 이번 달 계량기 숫자를 아직 안 적은 호수 — 반장이 독촉할 대상 */
+const pendingThis = computed(() => (statement.value?.rows ?? []).filter((r) => !r.thisEntered).map((r) => r.unitNo))
 
 /** 최근 6개월 막대차트 (오래된→최신) */
 const chart = computed(() => {
@@ -257,14 +293,14 @@ const commitExtra = async () => {
 const doReset = async () => {
   if (!me.value || !resetUnit.value) return
   const target = resetUnit.value
-  if (!confirm(`${target}호의 아이디 등록을 초기화할까요? 그 세대는 새 아이디로 다시 등록해야 해요.`)) return
+  if (!confirm(`${target}호의 이름 등록을 지울까요? ${target}호는 다음에 들어올 때 이름을 다시 넣어야 해요. 계량기 숫자와 요금은 그대로 남아요.`)) return
   saving.value = true
   try {
     await resetHousehold(target, me.value)
     resetUnit.value = ''
     errorText.value = ''
-    if (target === me.value.unitNo) { alert('초기화했어요. 새 이름으로 다시 등록해 주세요.'); logout() }
-    else alert('초기화했어요.')
+    if (target === me.value.unitNo) { alert('지웠어요. 새 이름으로 다시 들어와 주세요.'); logout() }
+    else alert('지웠어요.')
   } catch (e: unknown) { errorText.value = errMsg(e, '초기화 실패') } finally { saving.value = false }
 }
 
@@ -293,11 +329,10 @@ function errMsg(e: unknown, fallback: string): string {
       <header class="wf-head">
         <div class="wf-head__l">
           <span class="wf-head__title">{{ me ? tabTitle : '수도요금' }}</span>
-          <span class="wf-kicker">Water fee</span>
         </div>
         <div class="wf-head__r">
-          <select v-if="me && months.length" v-model="selectedMonth" class="wf-monthsel" aria-label="정산 월">
-            <option v-for="m in months" :key="m.yearMonth" :value="m.yearMonth">{{ m.yearMonth }}</option>
+          <select v-if="me && months.length" v-model="selectedMonth" class="wf-monthsel" aria-label="어느 달 요금표를 볼지 고르기">
+            <option v-for="m in months" :key="m.yearMonth" :value="m.yearMonth">{{ monthLabel(m.yearMonth) }}</option>
           </select>
           <button v-if="me" type="button" class="wf-linkbtn" @click="logout">다른 집</button>
         </div>
@@ -337,48 +372,61 @@ function errMsg(e: unknown, fallback: string): string {
         <!-- ── 로그인 후 ── -->
         <template v-else>
           <div v-if="statement && !statement.allEntered" class="wf-provisional">
-            <b>{{ statement.enteredCount }}/15 세대 입력</b> · 나머지는 지난달로 추정한 <b>잠정 금액</b>이에요. 모두 입력되면 확정됩니다.
+            아직 {{ statement.rows.length }}집 중 <b>{{ statement.enteredCount }}집만</b> {{ md(billEnd!) }} 계량기 숫자를 냈어요.
+            나머지 집은 지난달만큼 쓴 걸로 잡아서, <b>금액이 조금 바뀔 수 있어요.</b>
           </div>
 
           <!-- 우리 집 -->
           <template v-if="tab === 'mine'">
             <section v-if="!statement" class="wf-empty">
-              <p class="wf-empty__t">아직 이번 달 정산표가 없어요.</p>
-              <p class="wf-muted">{{ me.isManager ? '‘관리’ 탭에서 새 달을 만들어 주세요.' : '반장이 정산표를 만들면 여기에 보여요.' }}</p>
+              <p class="wf-empty__t">아직 요금표가 없어요.</p>
+              <p class="wf-muted">{{ me.isManager ? '‘관리’ 탭에서 새 요금표를 만들어 주세요.' : '반장님이 만들면 여기에 나와요.' }}</p>
             </section>
             <template v-else>
+              <!-- 이번에 낼 돈 — 기간을 금액 바로 옆에 붙여 "언제 쓴 물값인가"를 5초 안에 답한다 -->
               <div class="wf-hero">
-                <span class="wf-kicker">{{ statement.allEntered ? '이번 달 낼 금액' : '이번 달 예상 금액' }}</span>
+                <span class="wf-kicker">{{ billMonth }}월 수도요금{{ statement.allEntered ? '' : ' · 아직 확정 전' }}</span>
                 <div class="wf-hero__amt"><b>{{ won(myRow?.payment ?? 0) }}</b><span>원</span></div>
+                <p class="wf-say">
+                  <b>{{ billPeriod }}</b>에<br />쓰신 물값이에요.
+                </p>
                 <div class="wf-tagrow">
-                  <span class="tag tag-accent">{{ myRow?.estimated ? '예상 ' : '사용 ' }}{{ myRow?.usage ?? 0 }}톤</span>
-                  <span v-if="myRow?.estimated" class="tag tag-outline">검침 전 · 잠정</span>
-                  <span v-else-if="myRow?.isManager" class="tag tag-outline">반장</span>
+                  <span class="tag tag-accent">{{ myRow?.usage ?? 0 }}톤{{ myRow?.estimated ? ' (예상)' : '' }}</span>
+                  <span class="tag tag-outline">{{ PAY_DUE_DAY }}일까지 내주세요</span>
+                  <span v-if="myRow?.isManager" class="tag tag-outline">반장</span>
                 </div>
+                <button v-if="!myRow?.thisEntered" type="button" class="btn btn-primary wf-cta" @click="goToReading">
+                  {{ md(readDay!) }} 계량기 숫자 적기 ↓
+                </button>
               </div>
 
-              <div class="wf-grid2">
-                <div class="wf-cell">
-                  <span class="wf-kicker">사용량 ({{ prevReadMonth }}→{{ currReadMonth }}월)</span>
-                  <div class="wf-cell__v">{{ myRow?.usage ?? 0 }}<em>톤</em></div>
-                  <div class="wf-cell__sub">{{ prevReadMonth }}월 {{ myRow?.prevReading ?? 0 }} → {{ currReadMonth }}월 {{ myRow?.currReading ?? 0 }}</div>
+              <!-- 헷갈리는 지점을 딱 한 번, 물어볼 만한 자리에서 설명한다 -->
+              <details class="wf-why">
+                <summary class="wf-why__q">왜 두 달 전에 쓴 물값인가요?</summary>
+                <div class="wf-why__a">
+                  <p>수도국에서 보내는 고지서가 두 달 늦게 나옵니다.</p>
+                  <p>그래서 {{ billMonth }}월 요금에는 {{ billPeriod }}에 쓴 물값이 적혀 있어요.</p>
+                  <p>계량기는 매달 {{ METER_DAY }}일에 읽어요. 오늘 적으시는 숫자는 다음 {{ nextBillMonth }}월 요금에 쓰입니다.</p>
+                  <p>지금은 {{ billMonth }}월 요금만 내시면 돼요.</p>
                 </div>
-                <div class="wf-cell wf-cell--r">
-                  <span class="wf-kicker">{{ thisReadMonth }}월 검침</span>
-                  <div class="wf-cell__v">{{ myRow?.thisEntered ? myRow?.thisReading : '—' }}</div>
-                  <div class="wf-cell__sub">{{ myRow?.thisEntered ? '입력됨' : '아래에서 입력' }}</div>
-                </div>
-              </div>
+              </details>
 
-              <div class="wf-sec">
-                <span class="wf-kicker">{{ thisReadMonth }}월 계량기 숫자 입력</span>
-                <div class="wf-readrow">
-                  <input v-model.number="readingInput" type="number" inputmode="numeric" class="wf-readinput" placeholder="이번 달 검침" />
-                  <button type="button" class="btn btn-primary wf-savebtn" :disabled="saving" @click="submitReading">
-                    {{ saving ? '저장 중' : '저장' }}
-                  </button>
-                </div>
-                <p class="wf-readhint">이번 달({{ thisReadMonth }}월)에 잰 계량기 숫자를 넣어 주세요. 지난 {{ currReadMonth }}월 검침은 {{ myRow?.currReading ?? 0 }}였어요. (다음 달 요금에 반영됩니다)</p>
+              <!-- 금액의 근거가 되는 계량기 숫자 두 개 (읽기 전용) -->
+              <div class="wf-sec wf-reading2">
+                <template v-if="myRow?.estimated">
+                  <p class="wf-reading2__est">
+                    {{ md(billEnd!) }} 계량기 숫자를 아직 못 받아서,
+                    지난달만큼(<b>{{ myRow?.usage ?? 0 }}톤</b>) 쓴 걸로 계산했어요.
+                  </p>
+                </template>
+                <template v-else>
+                  <p class="wf-reading2__row">
+                    <span>{{ md(billStart!) }}</span><b>{{ myRow?.prevReading ?? 0 }}</b>
+                    <em aria-hidden="true">→</em>
+                    <span>{{ md(billEnd!) }}</span><b>{{ myRow?.currReading ?? 0 }}</b>
+                  </p>
+                  <p class="wf-reading2__sum">그 사이에 <b>{{ myRow?.usage ?? 0 }}톤</b> 쓰셨어요.</p>
+                </template>
               </div>
 
               <div class="wf-sec">
@@ -390,14 +438,43 @@ function errMsg(e: unknown, fallback: string): string {
                   <span class="wf-line__l">추가비용<em>{{ statement.extraCosts.filter((c) => !(c.excludedUnits ?? []).includes(me.unitNo)).map((c) => c.name).join(', ') }}</em></span>
                   <span class="wf-line__v">{{ won(myRow?.extra ?? 0) }}원</span>
                 </div>
-                <div v-if="(myRow?.discount ?? 0) > 0" class="wf-line"><span class="wf-line__l">감면</span><span class="wf-line__v">−{{ won(myRow?.discount ?? 0) }}원</span></div>
-                <div class="wf-line wf-line--total"><span class="wf-line__l">납입액</span><span class="wf-line__total">{{ won(myRow?.payment ?? 0) }}원</span></div>
+                <div v-if="(myRow?.discount ?? 0) > 0" class="wf-line"><span class="wf-line__l">깎아드린 금액</span><span class="wf-line__v">−{{ won(myRow?.discount ?? 0) }}원</span></div>
+                <div class="wf-line wf-line--total"><span class="wf-line__l">내실 돈</span><span class="wf-line__total">{{ won(myRow?.payment ?? 0) }}원</span></div>
+              </div>
+
+              <!-- 절취선 — 위는 이미 정해진 이번 요금, 아래는 다음 달 요금을 만들 숫자 -->
+              <p class="wf-cut"><span aria-hidden="true">✂</span> 여기부터는 <b>다음 {{ nextBillMonth }}월 요금</b>을 만들려고 지금 적는 숫자예요.</p>
+
+              <div ref="readingSec" class="wf-sec wf-ask">
+                <h2 class="wf-ask__t">{{ md(readDay!) }} 계량기 숫자를 적어 주세요</h2>
+                <div class="wf-readrow">
+                  <label class="wf-sr" for="wf-reading">{{ md(readDay!) }} 계량기 숫자</label>
+                  <input
+                    id="wf-reading" ref="readingEl" v-model.number="readingInput"
+                    type="number" inputmode="numeric" class="wf-readinput" placeholder="예: 145"
+                  />
+                  <button type="button" class="btn btn-primary wf-savebtn" :disabled="saving" @click="submitReading">
+                    {{ saving ? '저장 중' : '저장' }}
+                  </button>
+                </div>
+                <p class="wf-readhint">
+                  지금 계량기에 보이는 숫자를 그대로 적으시면 돼요.<br />
+                  <template v-if="myRow?.currReading">지난 {{ md(billEnd!) }}에는 {{ myRow.currReading }}이었어요.<br /></template>
+                  여기 적는 숫자는 <b>다음 {{ nextBillMonth }}월 요금</b>({{ nextPeriod }} 사용분)에 쓰여요.
+                  위의 {{ billMonth }}월 요금은 바뀌지 않아요.
+                </p>
+                <p v-if="myRow?.thisEntered" class="wf-done">
+                  ✓ {{ md(readDay!) }} 계량기 숫자 <b>{{ myRow.thisReading }}</b>, 잘 받았어요.
+                  고치시려면 다시 적고 저장하시면 돼요.
+                </p>
               </div>
 
               <div v-if="myHistory.length > 1" class="wf-sec">
-                <div class="wf-sechead"><span>최근 내역</span><button type="button" class="wf-linkbtn" @click="tab = 'hist'">전체보기</button></div>
+                <div class="wf-sechead">
+                  <span>우리 집이 낸 돈</span><button type="button" class="wf-linkbtn" @click="tab = 'hist'">전체보기</button>
+                </div>
                 <div v-for="h in myHistory.slice(0, 3)" :key="h.yearMonth" class="wf-line">
-                  <span class="wf-line__l">{{ monthNum(h.yearMonth) }}월 수도요금<em>{{ h.usage }}톤</em></span>
+                  <span class="wf-line__l">{{ monthNum(h.yearMonth) }}월 요금<em>{{ h.usage }}톤</em></span>
                   <span class="wf-line__v">{{ won(h.payment) }}원</span>
                 </div>
               </div>
@@ -406,10 +483,11 @@ function errMsg(e: unknown, fallback: string): string {
 
           <!-- 내역 -->
           <template v-else-if="tab === 'hist'">
-            <section v-if="!myHistory.length" class="wf-empty"><p class="wf-muted">아직 사용 내역이 없어요.</p></section>
+            <section v-if="!myHistory.length" class="wf-empty"><p class="wf-muted">아직 내역이 없어요.</p></section>
             <template v-else>
               <div class="wf-sec">
-                <div class="wf-sechead"><span>월별 사용량</span><span class="wf-kicker">최근 {{ chart.length }}개월 · 톤</span></div>
+                <div class="wf-sechead"><span>달마다 쓴 물</span><span class="wf-kicker">최근 {{ chart.length }}개월 · 톤</span></div>
+                <p class="wf-chart__cap">막대 하나가 요금표 한 장이에요. 예를 들어 {{ billMonth }}월 요금은 {{ billPeriod }}에 쓴 물이에요.</p>
                 <div class="wf-chart">
                   <div v-for="c in chart" :key="c.ym" class="wf-chart__col">
                     <div class="wf-chart__val" :class="{ 'is-latest': c.latest }">{{ c.usage }}</div>
@@ -422,7 +500,7 @@ function errMsg(e: unknown, fallback: string): string {
               </div>
               <div class="wf-sec">
                 <div v-for="h in myHistory" :key="h.yearMonth" class="wf-line">
-                  <span class="wf-line__l">{{ h.yearMonth }}<em>{{ h.usage }}톤</em></span>
+                  <span class="wf-line__l">{{ monthNum(h.yearMonth) }}월 요금<em>{{ h.usage }}톤</em></span>
                   <span class="wf-line__v">{{ won(h.payment) }}원</span>
                 </div>
               </div>
@@ -431,24 +509,27 @@ function errMsg(e: unknown, fallback: string): string {
 
           <!-- 전체 세대 -->
           <template v-else-if="tab === 'all'">
-            <section v-if="!statement" class="wf-empty"><p class="wf-muted">아직 정산표가 없어요.</p></section>
+            <section v-if="!statement" class="wf-empty"><p class="wf-muted">아직 요금표가 없어요.</p></section>
             <template v-else>
+              <p class="wf-allcap">
+                아래 사용량과 금액은 모두 <b>{{ billPeriod }}</b>에 쓴 물 기준이에요.
+              </p>
               <div class="wf-stats">
-                <div class="wf-stat"><span class="wf-kicker">전체 세대</span><div class="wf-stat__v">{{ statement.rows.length }}</div></div>
-                <div class="wf-stat"><span class="wf-kicker">검침 총사용량</span><div class="wf-stat__v">{{ statement.meteredTons }}<em>톤</em></div></div>
-                <div class="wf-stat"><span class="wf-kicker">합계 납입</span><div class="wf-stat__v wf-stat__v--sm">{{ won(statement.totals.payment) }}</div></div>
+                <div class="wf-stat"><span class="wf-kicker">집 수</span><div class="wf-stat__v">{{ statement.rows.length }}</div></div>
+                <div class="wf-stat"><span class="wf-kicker">다 같이 쓴 물</span><div class="wf-stat__v">{{ statement.meteredTons }}<em>톤</em></div></div>
+                <div class="wf-stat"><span class="wf-kicker">모두 낼 돈</span><div class="wf-stat__v wf-stat__v--sm">{{ won(statement.totals.payment) }}</div></div>
               </div>
 
               <div class="wf-toolbar">
                 <button type="button" class="btn btn-secondary" :disabled="downloading" @click="doDownload">
-                  {{ downloading ? '엑셀 만드는 중…' : '⬇ 엑셀 다운로드' }}
+                  {{ downloading ? '엑셀 만드는 중…' : '⬇ 엑셀 내려받기' }}
                 </button>
                 <span v-if="saving" class="wf-saving">저장 중…</span>
               </div>
 
               <div class="wf-units">
                 <div class="wf-units__head">
-                  <span>세대</span><span class="wf-units__ru">사용량</span><span class="wf-units__rf">납입액</span>
+                  <span>집</span><span class="wf-units__ru">쓴 물</span><span class="wf-units__rf">낼 돈</span>
                 </div>
                 <template v-for="row in statement.rows" :key="row.unitNo">
                   <component
@@ -467,41 +548,57 @@ function errMsg(e: unknown, fallback: string): string {
                     <span class="wf-unit__f" :class="{ 'is-est': row.estimated }">{{ won(row.payment) }}원</span>
                   </component>
                   <div v-if="me.isManager && editingUnit === row.unitNo" :key="row.unitNo + '-e'" class="wf-edit">
-                    <label class="wf-field"><span class="wf-field__label">{{ prevReadMonth }}월 검침 (이전)</span>
-                      <input v-model.number="row.prevReading" type="number" class="wf-input" @change="saveU(row, 'prevReading')" /></label>
-                    <label class="wf-field"><span class="wf-field__label">{{ currReadMonth }}월 검침 (현재)</span>
-                      <input v-model.number="row.currReading" type="number" class="wf-input" @change="saveU(row, 'currReading')" /></label>
-                    <label class="wf-field"><span class="wf-field__label">{{ thisReadMonth }}월 검침 (이번 달)</span>
+                    <p class="wf-edit__cap">이번 {{ billMonth }}월 요금이 청구하는 기간 — 두 숫자의 차이가 요금이 돼요.</p>
+                    <div class="wf-edit__pair">
+                      <label class="wf-field"><span class="wf-field__label">{{ md(billStart!) }} 계량기</span>
+                        <input v-model.number="row.prevReading" type="number" class="wf-input" @change="saveU(row, 'prevReading')" /></label>
+                      <label class="wf-field"><span class="wf-field__label">{{ md(billEnd!) }} 계량기</span>
+                        <input v-model.number="row.currReading" type="number" class="wf-input" @change="saveU(row, 'currReading')" /></label>
+                    </div>
+                    <p class="wf-edit__usage">
+                      <template v-if="row.estimated">아직 {{ md(billEnd!) }} 숫자를 안 받아서, 지난달만큼 <b>{{ row.usage }}톤</b>으로 잡았어요.</template>
+                      <template v-else>→ 이번 {{ billMonth }}월 요금 사용량 <b>{{ row.usage }}톤</b></template>
+                    </p>
+
+                    <p class="wf-edit__cap wf-edit__cap--next">다음 {{ nextBillMonth }}월 요금에 쓰일 숫자 — 주민이 직접 적는 칸이에요.</p>
+                    <label class="wf-field"><span class="wf-field__label">{{ md(readDay!) }} 계량기 {{ row.thisEntered ? '· 적음' : '· 아직 안 적음' }}</span>
                       <input v-model.number="row.thisReading" type="number" class="wf-input" @change="saveU(row, 'thisReading')" /></label>
-                    <label class="wf-field"><span class="wf-field__label">감면 (원)</span>
-                      <input v-model.number="row.discount" type="number" class="wf-input" @change="saveU(row, 'discount')" /></label>
-                    <label class="wf-field"><span class="wf-field__label">가구수</span>
-                      <input v-model.number="row.households" type="number" class="wf-input" @change="saveU(row, 'households')" /></label>
+
+                    <div class="wf-edit__pair">
+                      <label class="wf-field"><span class="wf-field__label">깎아주는 금액 (원)</span>
+                        <input v-model.number="row.discount" type="number" class="wf-input" @change="saveU(row, 'discount')" /></label>
+                      <label class="wf-field"><span class="wf-field__label">가구수</span>
+                        <input v-model.number="row.households" type="number" class="wf-input" @change="saveU(row, 'households')" /></label>
+                    </div>
                   </div>
                 </template>
               </div>
-              <p v-if="me.isManager" class="wf-hint">세대를 눌러 검침·감면·가구수를 고칠 수 있어요.</p>
+              <p v-if="me.isManager" class="wf-hint">
+                집을 누르면 계량기 숫자·깎아주는 금액·가구수를 고칠 수 있어요.
+                주민이 적은 {{ md(readDay!) }} 숫자는 웬만하면 그대로 두세요.
+              </p>
             </template>
           </template>
 
           <!-- 관리 (반장) -->
           <template v-else>
             <section v-if="!statement" class="wf-empty">
-              <p class="wf-empty__t">아직 정산표가 없어요.</p>
-              <button type="button" class="btn btn-primary wf-btn-lg" :disabled="saving" @click="createNext">첫 정산표 만들기</button>
+              <p class="wf-empty__t">아직 요금표가 없어요.</p>
+              <button type="button" class="btn btn-primary wf-btn-lg" :disabled="saving" @click="createNext">첫 요금표 만들기</button>
             </section>
             <template v-else>
               <div class="wf-sec">
-                <div class="wf-sechead"><span>요금 입력</span><span class="wf-kicker">1톤당 {{ dec1(statement.perTon) }}원</span></div>
-                <label class="wf-field wf-field--row"><span class="wf-field__label">총 수도요금 (원)</span>
+                <div class="wf-sechead"><span>{{ billMonth }}월 요금표 금액</span><span class="wf-kicker">1톤당 {{ dec1(statement.perTon) }}원</span></div>
+                <p class="wf-seccap">수도국이 보낸 고지서({{ billPeriod }} 사용분)를 보고 그대로 적어 주세요.</p>
+                <label class="wf-field wf-field--row"><span class="wf-field__label">고지서 금액 (원)</span>
                   <input v-model.number="statement.totalWaterFee" type="number" class="wf-input wf-input--r" @change="saveG('totalWaterFee')" /></label>
                 <label class="wf-field wf-field--row"><span class="wf-field__label">공동전기 (원)</span>
                   <input v-model.number="statement.commonElectricity" type="number" class="wf-input wf-input--r" @change="saveG('commonElectricity')" /></label>
-                <label class="wf-field wf-field--row"><span class="wf-field__label">수도국 총사용량 (톤)</span>
+                <label class="wf-field wf-field--row"><span class="wf-field__label">고지서의 총 사용량 (톤)</span>
                   <input v-model.number="statement.bureauTotalTons" type="number" class="wf-input wf-input--r" @change="saveG('bureauTotalTons')" /></label>
-                <label class="wf-field wf-field--row"><span class="wf-field__label">계단청소 (라인당, 원)</span>
+                <label class="wf-field wf-field--row"><span class="wf-field__label">계단청소 (한 라인당, 원)</span>
                   <input v-model.number="statement.stairCleaningFee" type="number" class="wf-input wf-input--r" @change="saveG('stairCleaningFee')" /></label>
-                <div class="wf-line"><span class="wf-line__l">검침 총사용량 / 수도국 차이</span><span class="wf-line__v">{{ statement.meteredTons }} / {{ statement.bureauDiff }}톤</span></div>
+                <div class="wf-line"><span class="wf-line__l">{{ statement.rows.length }}집 계량기 합계 / 고지서와 차이</span><span class="wf-line__v">{{ statement.meteredTons }} / {{ statement.bureauDiff }}톤</span></div>
               </div>
 
               <div class="wf-sec">
@@ -529,29 +626,47 @@ function errMsg(e: unknown, fallback: string): string {
               </div>
 
               <div class="wf-sec">
-                <div class="wf-sechead"><span>정산 설정</span></div>
+                <div class="wf-sechead"><span>요금표 설정</span></div>
                 <label class="wf-field wf-field--row"><span class="wf-field__label">반장 호수</span>
                   <select class="wf-input wf-input--r" :value="statement.managerUnit" @change="changeManager">
                     <option v-for="u in UNIT_NUMBERS" :key="u" :value="u">{{ u }}호</option>
                   </select></label>
-                <div class="wf-field wf-field--row"><span class="wf-field__label">세대 아이디 초기화</span>
+                <div class="wf-field wf-field--row"><span class="wf-field__label">이름 등록 지우기</span>
                   <div class="wf-resetrow">
                     <select v-model="resetUnit" class="wf-input">
                       <option value="" disabled>호수</option>
                       <option v-for="u in UNIT_NUMBERS" :key="u" :value="u">{{ u }}호</option>
                     </select>
-                    <button type="button" class="btn btn-secondary" :disabled="!resetUnit || saving" @click="doReset">초기화</button>
+                    <button type="button" class="btn btn-secondary" :disabled="!resetUnit || saving" @click="doReset">지우기</button>
                   </div>
                 </div>
               </div>
 
               <div class="wf-sec wf-sec--actions">
+                <div class="wf-sechead"><span>다음 달 요금표 만들기</span></div>
                 <p class="wf-thisprog">
-                  <b>{{ thisReadMonth }}월 검침</b> {{ statement.thisEnteredCount }}/15 세대 입력됨{{ statement.allThisEntered ? ' · 완료! 새 달을 만들면 이번 달 검침이 현재검침이 됩니다.' : '' }}
+                  <b>{{ md(readDay!) }} 계량기 숫자</b>는 {{ statement.rows.length }}집 중 {{ statement.thisEnteredCount }}집이 적었어요.
                 </p>
-                <button type="button" class="btn btn-secondary wf-btn-lg" :disabled="saving" @click="createNext">＋ 새 달 만들기 ({{ thisReadMonth }}월 검침 → 다음 달)</button>
+                <p v-if="pendingThis.length" class="wf-pending">아직 안 적은 집: {{ pendingThis.join(', ') }}호</p>
+                <p v-else class="wf-thisprog">모두 적었어요. 다음 요금표를 만드셔도 됩니다.</p>
+
+                <!-- 새 달은 항상 '가장 최근 요금표'의 다음 달로 만들어진다(createNext 기준) -->
+                <p class="wf-nextinfo">
+                  {{ nextYmMonth }}월 요금표는 <b>{{ nextPeriod }}</b>에 쓴 물값을 계산해요.
+                  지금 모으는 {{ md(readDay!) }} 계량기 숫자가 그대로 넘어갑니다.
+                </p>
+                <p v-if="pendingThis.length" class="wf-warn">
+                  지금 만들면 아직 안 적은 {{ pendingThis.length }}집은 지난달만큼 쓴 걸로 잡혀요.
+                  나중에 숫자를 넣으면 금액이 다시 맞춰집니다.
+                </p>
+                <p v-if="!isLatest" class="wf-warn">
+                  지난 요금표를 보고 계세요. 새로 만들려면 위에서 가장 최근 달({{ months[0]?.yearMonth }})을 골라 주세요.
+                </p>
+                <button type="button" class="btn btn-secondary wf-btn-lg" :disabled="saving || !isLatest" @click="createNext">
+                  ＋ {{ nextYmMonth }}월 요금표 만들기
+                </button>
                 <button type="button" class="btn btn-secondary wf-btn-lg" :disabled="downloading" @click="doDownload">
-                  {{ downloading ? '엑셀 만드는 중…' : '⬇ 엑셀 다운로드' }}
+                  {{ downloading ? '엑셀 만드는 중…' : '⬇ 엑셀 내려받기' }}
                 </button>
               </div>
             </template>
@@ -617,7 +732,7 @@ function errMsg(e: unknown, fallback: string): string {
 
 /* 공통 요소 */
 .wf-kicker { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--n600); font-weight: 600; }
-.wf-muted { color: var(--n600); font-size: 14px; margin: 0; }
+.wf-muted { color: var(--n700); font-size: 14px; margin: 0; }
 .wf-err { margin: 12px 20px; padding: 10px 14px; background: var(--a100); color: var(--a800); font-size: 13px; font-weight: 600; border-left: 3px solid var(--accent); }
 .wf-note { padding: 40px 20px; text-align: center; color: var(--n600); }
 .wf-linkbtn { border: none; background: none; padding: 0; font-family: var(--head); font-weight: 800; font-size: 12px; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
@@ -630,13 +745,15 @@ function errMsg(e: unknown, fallback: string): string {
   padding: calc(env(safe-area-inset-top) + 18px) 20px 12px;
   background: var(--bg); border-bottom: 2px solid var(--divider);
 }
-.wf-head__l { display: flex; align-items: baseline; gap: 9px; }
-.wf-head__title { font-family: var(--head); font-weight: 800; font-size: 21px; letter-spacing: -0.015em; }
+.wf-head__l { display: flex; align-items: baseline; gap: 9px; min-width: 0; }
+.wf-head__title { font-family: var(--head); font-weight: 800; font-size: 21px; letter-spacing: -0.015em; white-space: nowrap; }
 .wf-head__r { display: flex; align-items: center; gap: 12px; }
 .wf-monthsel {
   font-family: var(--head); font-weight: 600; font-size: 12px; color: var(--n700);
   background: var(--bg); border: 1px solid var(--divider); border-radius: 0; padding: 5px 8px; cursor: pointer;
+  max-width: 148px; /* 긴 옵션 텍스트가 sticky 헤더를 밀어내지 않게 */
 }
+.wf-head__r .wf-linkbtn { white-space: nowrap; }
 
 /* 바디 */
 .wf-body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
@@ -682,7 +799,7 @@ function errMsg(e: unknown, fallback: string): string {
 .tag-outline { border: 1px solid var(--accent); color: var(--accent); }
 
 /* 잠정/예상 */
-.wf-provisional { padding: 11px 20px; background: var(--a100); color: var(--a800); font-size: 12.5px; line-height: 1.5; border-bottom: 2px solid var(--divider); }
+.wf-provisional { padding: 12px 20px; background: var(--a100); color: var(--a800); font-size: 13px; line-height: 1.55; border-bottom: 2px solid var(--divider); }
 .wf-provisional b { font-weight: 800; }
 .wf-est { font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--n600); border: 1px dashed var(--n400); padding: 1px 5px; }
 .wf-unit__u.is-est, .wf-unit__f.is-est { color: var(--n600); }
@@ -694,18 +811,68 @@ function errMsg(e: unknown, fallback: string): string {
 .wf-hero__amt span { font-family: var(--head); font-weight: 800; font-size: 20px; }
 .wf-tagrow { display: flex; gap: 6px; margin-top: 14px; }
 
-.wf-grid2 { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 2px solid var(--divider); }
-.wf-cell { padding: 16px 20px; }
-.wf-cell:first-child { border-right: 2px solid var(--divider); }
-.wf-cell__v { font-family: var(--head); font-weight: 800; font-size: 24px; margin-top: 6px; }
-.wf-cell__v em { font-style: normal; font-size: 14px; font-weight: 600; color: var(--n600); margin-left: 2px; }
-.wf-cell__sub { font-size: 12px; color: var(--n600); margin-top: 2px; }
+/* 주문장 — "언제 쓴 물값인가"에 5초 안에 답하는 한 줄. 금액 바로 아래가 제자리다. */
+.wf-say { margin: 14px 0 0; font-family: var(--head); font-size: 19px; line-height: 1.4; letter-spacing: -0.01em; }
+.wf-say b { font-weight: 800; color: var(--a700); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.wf-cta { width: 100%; min-height: 52px; margin-top: 16px; font-size: 16px; }
+
+/* 왜 두 달 전 물값인가 — 평소엔 한 줄, 궁금할 때만 펼친다 */
+.wf-why { border-bottom: 2px solid var(--divider); }
+.wf-why__q { padding: 15px 20px; font-family: var(--head); font-weight: 800; font-size: 15px; color: var(--a700); cursor: pointer; list-style: none; }
+.wf-why__q::-webkit-details-marker { display: none; }
+.wf-why__q::after { content: " ▾"; font-size: 11px; }
+.wf-why[open] .wf-why__q::after { content: " ▴"; }
+.wf-why__q:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.wf-why__a { padding: 0 20px 18px; }
+.wf-why__a p { margin: 0 0 10px; font-size: 15px; line-height: 1.6; color: var(--n700); }
+.wf-why__a p:last-child { margin-bottom: 0; }
+
+/* 금액의 근거가 되는 계량기 숫자 두 개 */
+.wf-reading2 { gap: 4px; }
+.wf-reading2__row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin: 0; font-size: 14px; color: var(--n700); }
+.wf-reading2__row b { font-family: var(--head); font-size: 19px; color: var(--ink); }
+.wf-reading2__row em { font-style: normal; color: var(--n600); margin: 0 2px; }
+.wf-reading2__sum { margin: 6px 0 0; font-size: 15px; }
+.wf-reading2__sum b, .wf-reading2__est b { font-family: var(--head); font-weight: 800; }
+.wf-reading2__est { margin: 0; font-size: 14px; line-height: 1.55; color: var(--n700); }
+
+/* 절취선 — 위(확정된 이번 요금)와 아래(다음 달용 숫자)를 물리적으로 가른다 */
+.wf-cut {
+  margin: 0; padding: 14px 20px; font-size: 13px; line-height: 1.5; color: var(--n700);
+  background: var(--surface); border-top: 2px dashed var(--n400); border-bottom: 2px dashed var(--n400);
+}
+.wf-cut b { font-weight: 800; color: var(--ink); }
+.wf-cut span { margin-right: 6px; }
+
+/* 계량기 입력 */
+.wf-ask__t { margin: 0 0 4px; font-family: var(--head); font-weight: 800; font-size: 18px; line-height: 1.35; letter-spacing: -0.01em; }
+.wf-done { margin: 10px 0 0; padding: 10px 12px; background: var(--a100); font-size: 13.5px; line-height: 1.5; color: var(--a800); }
+.wf-done b { font-family: var(--head); font-weight: 800; }
+
+/* 반장 편집 — 세 숫자가 한꺼번에 보이는 곳이라 구간 설명을 붙인다 */
+.wf-edit__cap { grid-column: 1 / -1; margin: 0 4px; font-size: 12.5px; line-height: 1.5; font-weight: 600; color: var(--n700); }
+.wf-edit__cap--next { margin-top: 6px; padding-top: 10px; border-top: 1px dashed var(--n400); }
+.wf-edit__pair { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wf-edit__usage { grid-column: 1 / -1; margin: 0 4px; font-size: 13px; color: var(--a700); }
+.wf-edit__usage b { font-family: var(--head); font-weight: 800; }
+
+/* 안내 문구 */
+.wf-allcap { margin: 0; padding: 13px 20px; font-size: 13.5px; line-height: 1.5; color: var(--n700); border-bottom: 2px solid var(--divider); }
+.wf-allcap b, .wf-nextinfo b { font-weight: 800; color: var(--ink); }
+.wf-seccap { margin: 6px 0 10px; font-size: 12.5px; line-height: 1.5; color: var(--n700); }
+.wf-chart__cap { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--n700); }
+.wf-nextinfo { margin: 2px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--n700); }
+.wf-pending { margin: 0; font-size: 13px; line-height: 1.5; color: var(--a700); font-weight: 600; }
+.wf-warn { margin: 2px 0 0; padding: 10px 12px; background: var(--a100); font-size: 12.5px; line-height: 1.5; color: var(--a800); }
+
+/* 스크린리더 전용 */
+.wf-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 
 /* 섹션 */
 .wf-sec { padding: 18px 20px; border-bottom: 2px solid var(--divider); display: flex; flex-direction: column; }
 .wf-sec:last-child { border-bottom: none; }
 .wf-sec--actions { gap: 10px; }
-.wf-thisprog { margin: 0 0 2px; font-size: 12.5px; color: var(--n700); }
+.wf-thisprog { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--n700); }
 .wf-thisprog b { font-weight: 800; color: var(--ink); }
 .wf-sechead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-bottom: 8px; margin-bottom: 4px; border-bottom: 2px solid var(--divider); }
 .wf-sechead > span:first-child { font-family: var(--head); font-weight: 800; font-size: 15px; }
@@ -714,7 +881,7 @@ function errMsg(e: unknown, fallback: string): string {
 .wf-readrow { display: flex; gap: 8px; margin-top: 12px; }
 .wf-readinput { flex: 1; min-width: 0; min-height: 56px; padding: 10px 14px; font-family: var(--head); font-weight: 800; font-size: 26px; text-align: right; color: var(--ink); background: var(--surface); border: 1px solid var(--accent); border-radius: 0; outline: none; }
 .wf-savebtn { flex: none; min-height: 56px; padding-inline: 22px; font-size: 16px; }
-.wf-readhint { margin: 10px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--n600); }
+.wf-readhint { margin: 10px 0 0; font-size: 13px; line-height: 1.6; color: var(--n700); }
 
 /* 라인 항목 */
 .wf-line { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--n300); }
@@ -758,7 +925,7 @@ function errMsg(e: unknown, fallback: string): string {
 .wf-unit__name { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; }
 .wf-unit__u { text-align: right; min-width: 48px; font-size: 13px; font-weight: 600; white-space: nowrap; }
 .wf-unit__f { text-align: right; min-width: 70px; font-family: var(--head); font-weight: 800; font-size: 14px; white-space: nowrap; }
-.wf-edit { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--n300); background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.wf-edit { display: grid; grid-template-columns: 1fr; gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--n300); background: color-mix(in srgb, var(--ink) 4%, transparent); }
 .wf-edit .wf-field { padding: 0 4px; }
 
 /* 추가비용 편집 */
@@ -779,7 +946,7 @@ function errMsg(e: unknown, fallback: string): string {
 .wf-resetrow { display: flex; gap: 8px; }
 .wf-resetrow .wf-input { max-width: 90px; }
 
-.wf-hint { margin: 10px 20px 0; font-size: 12px; color: var(--n600); }
+.wf-hint { margin: 10px 20px 0; font-size: 12.5px; line-height: 1.5; color: var(--n700); }
 
 /* 하단 탭 */
 .wf-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border-top: 2px solid var(--divider); background: var(--surface); padding-bottom: env(safe-area-inset-bottom); }
