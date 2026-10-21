@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useNotionAgent, type ChatMessage } from '../../../composables/useNotionAgent'
 
 definePageMeta({ layout: 'main' })
@@ -139,8 +139,8 @@ const youtubeIds = (content: string): string[] => {
   return ids
 }
 
+// 합주실 조회는 아래 패널(CTA)이 담당하므로, 예시는 노션·캘린더 쪽만 둔다.
 const suggestions = [
-  '이번 주 토요일에 홍대 쪽 합주실 빈 시간 알려줘',
   '내 노션에 어떤 데이터베이스가 있는지 보여줘',
   '7월 20일 19시 그라운드 합정 A룸 예약했어. 캘린더에 등록해줘',
 ]
@@ -151,6 +151,9 @@ onMounted(async () => {
     await navigateTo('/auth/login')
     return
   }
+  // 합주실 패널 기본값: 돌아오는 토요일 + 저장된 지역/시간대
+  if (!bandDate.value) bandDate.value = nextDow(6)
+  restoreBandPrefs()
   // 저장된 대화기록·모델 복원
   try {
     const savedChat = localStorage.getItem(CHAT_STORAGE_KEY)
@@ -244,6 +247,123 @@ const handleSend = async (text?: string) => {
 const cancelSend = () => {
   abortController.value?.abort()
 }
+// ── 합주실 빠른 검색 — 지역·날짜·시간대를 골라, 도구(get_available_slots)가 그대로 쓰는 형태의 질문을 만든다 ──
+// 카탈로그 지역명 그대로(검색은 부분 일치). 매칭 수가 많고 네이버 예약 연동이 있는 곳 위주.
+const REGIONS: string[] = ['합정/홍대', '신촌', '사당/이수', '강남', '혜화/성신여대', '강동/송파', '서울대입구', '부천']
+const BAND_PREFS_KEY = 'notion-agent:band-prefs'
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
+
+const panelOpen = ref(false)
+const bandRegion = ref(REGIONS[0])
+const bandStudio = ref('') // 특정 합주실 이름(선택) — 비우면 지역 전체
+const bandDate = ref('') // YYYY-MM-DD
+const bandStart = ref('19:00')
+const bandEnd = ref('21:00')
+
+const toDateInput = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const addDays = (n: number): string => {
+  const d = new Date()
+  d.setDate(d.getDate() + n)
+  return toDateInput(d)
+}
+/** 돌아오는 해당 요일(오늘이 그 요일이면 오늘). 합주는 주말이 흔해 토요일을 기본값으로 쓴다. */
+const nextDow = (dow: number): string => addDays((dow - new Date().getDay() + 7) % 7)
+const dateLabel = (ymd: string): string => {
+  const d = new Date(`${ymd}T00:00:00`)
+  return `${d.getMonth() + 1}월 ${d.getDate()}일(${WEEKDAYS[d.getDay()]})`
+}
+const minutesOf = (hhmm: string): number => {
+  const [h, m] = hhmm.split(':').map(Number)
+  return h * 60 + m
+}
+
+const bandHours = computed(() => (minutesOf(bandEnd.value) - minutesOf(bandStart.value)) / 60)
+const bandValid = computed(() => !!bandDate.value && !!bandStart.value && !!bandEnd.value && bandHours.value > 0)
+const bandPreview = computed(() =>
+  bandValid.value
+    ? `${dateLabel(bandDate.value)} ${bandStart.value}~${bandEnd.value} · ${bandRegion.value}${bandStudio.value.trim() ? ` · ${bandStudio.value.trim()}` : ''}`
+    : '',
+)
+
+/**
+ * 패널 값 → 질문 문장. 날짜는 YYYY-MM-DD, 시간은 HH:mm 구간으로 명시해
+ * 상대 날짜 해석 오차를 없애고, 에이전트가 start_time·end_time으로 연속 가능 여부(bookableForRequestedTime)를 판단하게 한다.
+ */
+const buildBandQuery = (): string => {
+  const studio = bandStudio.value.trim()
+  const where = studio ? `${bandRegion.value} 쪽 "${studio}"` : `${bandRegion.value} 쪽 네이버 예약 되는 합주실들`
+  return (
+    `${bandDate.value}(${dateLabel(bandDate.value)}) ${bandStart.value}~${bandEnd.value}에 ${where}에서 ` +
+    `그 시간 구간 전체가 연속으로 비어 있는 방을 찾아줘. 룸별로 예약 가능 여부와, 날짜·시간이 미리 선택된 예약 링크를 같이 알려줘.`
+  )
+}
+const sendBandQuery = () => {
+  if (!bandValid.value) return
+  panelOpen.value = false
+  handleSend(buildBandQuery())
+}
+
+// 지역·시간대·합주실은 반복 사용이 잦아 보존한다(날짜는 매번 다르니 제외).
+const persistBandPrefs = () => {
+  if (!import.meta.client) return
+  localStorage.setItem(
+    BAND_PREFS_KEY,
+    JSON.stringify({ region: bandRegion.value, start: bandStart.value, end: bandEnd.value, studio: bandStudio.value }),
+  )
+}
+watch([bandRegion, bandStart, bandEnd, bandStudio], persistBandPrefs)
+const restoreBandPrefs = () => {
+  try {
+    const raw = localStorage.getItem(BAND_PREFS_KEY)
+    if (!raw) return
+    const p = JSON.parse(raw) as Partial<{ region: string; start: string; end: string; studio: string }>
+    if (p.region && REGIONS.includes(p.region)) bandRegion.value = p.region
+    if (p.start) bandStart.value = p.start
+    if (p.end) bandEnd.value = p.end
+    if (typeof p.studio === 'string') bandStudio.value = p.studio
+  } catch {
+    // 손상된 값은 무시하고 기본값으로
+  }
+}
+
+/** 합주실 도구가 돈 마지막 답변 아래에 보여줄 다음 행동 — 같은 말을 다시 타이핑하지 않게 */
+interface FollowUp {
+  label: string
+  send?: string
+  panel?: boolean
+}
+const followUps = (m: ChatMessage): FollowUp[] => {
+  const tools = new Set((m.toolCalls ?? []).filter((t) => t.ok).map((t) => t.tool))
+  if (tools.has('get_available_slots')) {
+    return [
+      { label: '가능한 방 예약 링크 줘', send: '방금 조회한 날짜·시간으로 예약 가능한 룸의 예약 링크를 룸별로 줘' },
+      { label: '다른 날짜·시간으로', panel: true },
+      { label: '예약했어, 캘린더에 등록', send: '방금 알려준 합주실·룸·날짜·시간으로 예약했어. 노션 캘린더에 등록해줘' },
+    ]
+  }
+  if (tools.has('get_reservation_url')) {
+    return [
+      { label: '예약했어, 캘린더에 등록', send: '방금 링크로 예약했어. 노션 캘린더에 등록해줘' },
+      { label: '다른 날짜·시간으로', panel: true },
+    ]
+  }
+  if (tools.has('search_studios')) {
+    return [
+      { label: '첫 번째 곳 빈 시간', send: '첫 번째 합주실의 빈 시간을 알려줘' },
+      { label: '네이버 예약 되는 곳만', send: '네이버 예약으로 실시간 조회 되는 합주실만 다시 보여줘' },
+      { label: '날짜·시간 정해서 찾기', panel: true },
+    ]
+  }
+  return []
+}
+const onFollowUp = (f: FollowUp) => {
+  if (f.panel) {
+    panelOpen.value = true
+    return
+  }
+  if (f.send) handleSend(f.send)
+}
 </script>
 
 <template>
@@ -296,6 +416,13 @@ const cancelSend = () => {
           <div class="chat-thread">
             <div v-if="messages.length === 0" class="chat-welcome">
               <h2 class="chat-welcome__title">무엇을 도와드릴까요?</h2>
+              <button type="button" class="band-cta" @click="panelOpen = true">
+                <span class="band-cta__icon" aria-hidden="true">🎸</span>
+                <span class="band-cta__text">
+                  <strong>합주실 빈 시간 찾기</strong>
+                  <small>지역·날짜·시간만 고르면 바로 조회해요</small>
+                </span>
+              </button>
               <div class="chat-suggestions">
                 <button
                   v-for="s in suggestions"
@@ -342,6 +469,21 @@ const cancelSend = () => {
                   />
                 </div>
               </div>
+              <div
+                v-if="m.role === 'assistant' && i === messages.length - 1 && !sending && followUps(m).length"
+                class="msg-followups"
+                aria-label="다음 행동"
+              >
+                <button
+                  v-for="f in followUps(m)"
+                  :key="f.label"
+                  type="button"
+                  class="followup-chip"
+                  @click="onFollowUp(f)"
+                >
+                  {{ f.label }}
+                </button>
+              </div>
             </article>
 
             <article v-if="sending" class="msg msg--assistant">
@@ -355,6 +497,71 @@ const cancelSend = () => {
 
         <div class="composer-wrap">
           <p v-if="errorText" class="chat-error" role="alert">{{ errorText }}</p>
+          <div class="quick-bar">
+            <button
+              type="button"
+              :class="['quick-toggle', { 'is-open': panelOpen }]"
+              :aria-expanded="panelOpen"
+              aria-controls="band-panel"
+              @click="panelOpen = !panelOpen"
+            >
+              🎸 합주실 빈 시간 찾기
+            </button>
+          </div>
+          <section v-if="panelOpen" id="band-panel" class="band-panel" aria-label="합주실 빠른 검색">
+            <div class="band-row">
+              <span class="band-label">지역</span>
+              <div class="band-chips">
+                <button
+                  v-for="r in REGIONS"
+                  :key="r"
+                  type="button"
+                  :class="['band-chip', { 'is-on': bandRegion === r }]"
+                  :aria-pressed="bandRegion === r"
+                  @click="bandRegion = r"
+                >
+                  {{ r }}
+                </button>
+              </div>
+            </div>
+            <div class="band-row">
+              <span class="band-label">날짜</span>
+              <div class="band-chips">
+                <button type="button" class="band-chip" @click="bandDate = addDays(0)">오늘</button>
+                <button type="button" class="band-chip" @click="bandDate = addDays(1)">내일</button>
+                <button type="button" class="band-chip" @click="bandDate = nextDow(6)">이번 토요일</button>
+                <button type="button" class="band-chip" @click="bandDate = nextDow(0)">이번 일요일</button>
+                <input v-model="bandDate" type="date" class="band-input" :min="addDays(0)" aria-label="날짜 직접 선택" />
+              </div>
+            </div>
+            <div class="band-row">
+              <span class="band-label">시간</span>
+              <div class="band-time">
+                <input v-model="bandStart" type="time" step="1800" class="band-input" aria-label="시작 시각" />
+                <span class="band-tilde" aria-hidden="true">~</span>
+                <input v-model="bandEnd" type="time" step="1800" class="band-input" aria-label="종료 시각" />
+                <span :class="['band-dur', { 'is-bad': !(bandHours > 0) }]">
+                  {{ bandHours > 0 ? `${bandHours}시간` : '종료가 시작보다 늦어야 해요' }}
+                </span>
+              </div>
+            </div>
+            <div class="band-row">
+              <span class="band-label">합주실</span>
+              <input
+                v-model="bandStudio"
+                type="text"
+                class="band-input band-input--grow"
+                placeholder="(선택) 특정 합주실 이름 — 비우면 지역 전체"
+                aria-label="합주실 이름"
+              />
+            </div>
+            <div class="band-actions">
+              <p class="band-preview">{{ bandPreview }}</p>
+              <button type="button" class="band-submit" :disabled="!bandValid || sending" @click="sendBandQuery">
+                빈 시간 찾기
+              </button>
+            </div>
+          </section>
           <form class="composer" @submit.prevent="handleSend()">
             <textarea
               ref="inputEl"
@@ -848,6 +1055,249 @@ const cancelSend = () => {
   text-align: center;
   font-size: 11px;
   color: var(--muted-soft);
+}
+
+/* ── 합주실 빠른 검색 ── */
+.band-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin: 0 auto var(--space-lg);
+  padding: 12px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--canvas);
+  cursor: pointer;
+  text-align: left;
+  max-width: 100%;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.band-cta:hover {
+  border-color: var(--ink);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
+}
+
+.band-cta__icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.band-cta__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.band-cta__text strong {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.band-cta__text small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.quick-bar {
+  display: flex;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.quick-toggle {
+  padding: 6px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: var(--canvas);
+  color: var(--body-text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+.quick-toggle:hover {
+  border-color: var(--ink);
+  background: var(--surface-soft);
+}
+
+.quick-toggle.is-open {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(255, 56, 92, 0.06);
+}
+
+.band-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-base);
+  margin-bottom: var(--space-sm);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
+}
+
+.band-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.band-label {
+  flex: 0 0 44px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.band-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+  min-width: 0;
+}
+
+.band-chip {
+  padding: 5px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: var(--canvas);
+  color: var(--body-text);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease, background-color 120ms ease;
+}
+
+.band-chip:hover {
+  border-color: var(--ink);
+}
+
+.band-chip.is-on {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #ffffff;
+}
+
+.band-input {
+  padding: 6px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 13px;
+  font-family: inherit;
+  min-width: 0;
+}
+
+.band-input:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+
+.band-input--grow {
+  flex: 1;
+  min-width: 160px;
+}
+
+.band-time {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.band-tilde {
+  color: var(--muted);
+}
+
+.band-dur {
+  margin-left: var(--space-xs);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.band-dur.is-bad {
+  color: var(--error);
+}
+
+.band-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.band-preview {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  min-width: 0;
+}
+
+.band-submit {
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 120ms ease, opacity 120ms ease;
+}
+
+.band-submit:hover:not(:disabled) {
+  background: var(--primary-active);
+}
+
+.band-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── 답변 아래 다음 행동 칩 ── */
+.msg-followups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-top: var(--space-md);
+}
+
+.followup-chip {
+  padding: 6px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: var(--canvas);
+  color: var(--body-text);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.followup-chip:hover {
+  border-color: var(--ink);
+  background: var(--surface-soft);
+}
+
+.band-cta:focus-visible,
+.quick-toggle:focus-visible,
+.band-chip:focus-visible,
+.band-submit:focus-visible,
+.followup-chip:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .band-label {
+    flex-basis: 100%;
+  }
 }
 
 @media (max-width: 480px) {
