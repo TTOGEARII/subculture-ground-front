@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>앱으로 돌아가는 중…</title>
+<style>
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fbfaf8;
+    color: #1c1b22;
+    font-family: "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+    font-size: 16px;
+    text-align: center;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { background: #141218; color: #eceaf2; }
+  }
+  .box { padding: 24px; }
+  a.btn {
+    display: inline-block;
+    margin-top: 16px;
+    padding: 14px 24px;
+    border-radius: 12px;
+    background: #6d28d9;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .muted { color: #8a8798; font-size: 14px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="box">
+  <p id="msg">합주실 예약 AI 앱으로 돌아가는 중…</p>
+  <a id="open" class="btn" href="#" style="display:none">앱 열기</a>
+  <p id="hint" class="muted" style="display:none">자동으로 열리지 않으면 위 버튼을 눌러 주세요.</p>
+</div>
+<script>
+  // 카카오 인가 결과(code 또는 error)를 쿼리 그대로 앱 딥링크로 전달한다.
+  // 이 페이지는 카카오 개발자 콘솔에 Redirect URI로 등록되어 있어야 한다.
+  (function () {
+    var target = 'yatte://kakao' + (location.search || '');
+    var open = document.getElementById('open');
+    open.href = target;
+    location.replace(target);
+    // 앱이 없거나 자동 이동이 막힌 경우를 위한 수동 버튼
+    setTimeout(function () {
+      open.style.display = 'inline-block';
+      document.getElementById('hint').style.display = 'block';
+      document.getElementById('msg').textContent = '카카오 인증이 끝났어요.';
+    }, 1500);
+  })();
+</script>
+</body>
+</html>
