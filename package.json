@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "build": "nuxt build",
     "dev": "nuxt dev",
     "generate": "nuxt generate",

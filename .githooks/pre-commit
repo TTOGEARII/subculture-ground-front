@@ -1,0 +1,12 @@
+#!/bin/sh
+# AI 도구 설정/세션 산출물이 스테이징돼 있으면 커밋을 거부한다 (.gitignore를 `git add -f`로 우회해도 막는다).
+# 규칙 전문: CONTRIBUTING.md
+PATTERN='(^|/)(CLAUDE\.md|AGENTS\.md|GEMINI\.md|\.claude(/|$)|\.cursor(/|$)|\.cursorrules|\.aider[^/]*|\.continue(/|$)|\.windsurf(rules)?(/|$)|\.playwright-mcp(/|$)|copilot-instructions\.md)'
+BAD=$(git diff --cached --name-only --diff-filter=ACR | grep -iE "$PATTERN")
+if [ -n "$BAD" ]; then
+  printf '\n✖ 커밋 거부: AI 도구 파일은 git에 올리지 않습니다 (CONTRIBUTING.md):\n' >&2
+  printf '%s\n' "$BAD" | sed 's/^/    /' >&2
+  printf '  git restore --staged <파일>  로 스테이징을 해제하세요.\n\n' >&2
+  exit 1
+fi
+exit 0
