@@ -25,7 +25,7 @@ pnpm-debug.log*
 # Claude Code
 CLAUDE.md
 
-# ── AI 도구 설정/세션 산출물 — git에 올리지 않는다 (CONTRIBUTING.md) ──
+# ── AI 도구 설정/세션 산출물 — git에 올리지 않는다 ──
 AGENTS.md
 GEMINI.md
 .claude/
